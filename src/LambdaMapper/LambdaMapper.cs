@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Security;
+using FastExpressionCompiler;
 using LambdaMapper.Internal;
 
 [assembly: AllowPartiallyTrustedCallers]
@@ -61,7 +62,7 @@ namespace LambdaMapper
                 var typeFuncExpr = _typeMapperExpressions.First();
                 try
                 {
-                    var func = typeFuncExpr.expression.Compile();
+                    var func = typeFuncExpr.expression.CompileFast();
                     var result = func.DynamicInvoke();
                     _typeMappers.TryAdd(typeFuncExpr.type, result);
                     consecutiveErrors = 0;

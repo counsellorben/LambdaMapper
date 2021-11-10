@@ -2,17 +2,18 @@ using System;
 using System.Collections.Generic;
 using AutoMapper;
 using BenchmarkDotNet.Attributes;
+using FastExpressionCompiler;
+using Mapster;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
-using Nelibur.ObjectMapper;
 using Newtonsoft.Json.Serialization;
 
 namespace LambdaMapper.Benchmarks
 {
     public class Benchmarks
     {
-
         private IMapper _mapper;
+        private TypeAdapterConfig _mapsterConfig;
 
         [GlobalSetup]
         public void Setup()
@@ -37,26 +38,45 @@ namespace LambdaMapper.Benchmarks
             LambdaMapper.CreateMap<SourceName, DestinationName>();
             LambdaMapper.InstantiateMapper();
 
-            // TinyMapper.Bind<SourceClass, DestinationClass>(config =>
-            // {
-            //     config.Bind(target => target.Addresses, typeof(List<DestinationAddress>));
-            //     // config.Bind(target => target.Roles, typeof(Dictionary<int, DestinationRole>));
-            // });
+            TypeAdapterConfig.GlobalSettings.Compiler = exp => exp.CompileFast();
+            _mapsterConfig = new TypeAdapterConfig();
+            _mapsterConfig.NewConfig<SourceName, SourceName>()
+                .ConstructUsing(s => new SourceName(s.FirstName, s.LastName))
+                .IgnoreNullValues(true);
+            _mapsterConfig.NewConfig<SourceName, DestinationName>()
+                .ConstructUsing(s => new DestinationName(s.FirstName, s.LastName))
+                .IgnoreNullValues(true);
+            _mapsterConfig.NewConfig<IContractResolver, IContractResolver>()
+                .ConstructUsing(s => null)
+                .IgnoreNullValues(true);
+            _mapsterConfig.NewConfig<SourceAddress, DestinationAddress>()
+                .IgnoreNullValues(true);
+            _mapsterConfig.NewConfig<(SourceAddress, SourceAddress), (DestinationAddress, DestinationAddress)>()
+                .IgnoreNullValues(true);
+            var sourceClass = GetSourceClass();
+            var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
         }
 
-        // [Benchmark(Description = "TinyMapper")]
-        // public void TinyMappr()
+        // [Benchmark]
+        // public void Mapster()
         // {
         //     var sourceClass = GetSourceClass();
-        //     var destinationClass = TinyMapper.Map<DestinationClass>(sourceClass);
+        //     var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
         // }
 
-        [Benchmark]
-        public void Automapper()
-        {
-            var sourceClass = GetSourceClass();
-            var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
-        }
+        // [Benchmark]
+        // public void MapsterWithNull()
+        // {
+        //     var sourceClass = GetSourceClassWithNull();
+        //     var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
+        // }
+
+        // [Benchmark]
+        // public void Automapper()
+        // {
+        //     var sourceClass = GetSourceClass();
+        //     var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
+        // }
 
         [Benchmark(Description = "LambdaMapper")]
         public void LambdaMapperBenchmarks()
@@ -65,19 +85,19 @@ namespace LambdaMapper.Benchmarks
             var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
         }
 
-        [Benchmark]
-        public void AutomapperWithNull()
-        {
-            var sourceClass = GetSourceClassWithNull();
-            var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
-        }
+        // [Benchmark]
+        // public void AutomapperWithNull()
+        // {
+        //     var sourceClass = GetSourceClassWithNull();
+        //     var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
+        // }
 
-        [Benchmark]
-        public void LambdaMapperWithNull()
-        {
-            var sourceClass = GetSourceClassWithNull();
-            var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
-        }
+        // [Benchmark]
+        // public void LambdaMapperWithNull()
+        // {
+        //     var sourceClass = GetSourceClassWithNull();
+        //     var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
+        // }
 
         private SourceClass GetSourceClass() =>
             new SourceClass
