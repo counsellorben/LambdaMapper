@@ -15,6 +15,15 @@ namespace LambdaMapper.Tests
     public class MapperBenchmarkTests
     {
         [Test]
+        public void FastExpressionCompilerTest()
+        {
+            LambdaMapper.CreateMap<Source, Dest>();
+            var src = GetSourceWithNull();
+            var dest = LambdaMapper.MapObject<Source, Dest>(src);
+            Assert.AreEqual(src.Id, dest.Id);
+        }
+
+        [Test]
         public void LambdaMapperWithAndWithoutNull()
         {
             LambdaMapper.CreateMap<JsonPatchDocument<SourceAddress>, JsonPatchDocument<DestinationAddress>>();
@@ -229,6 +238,38 @@ namespace LambdaMapper.Tests
                     },
                     new DefaultContractResolver())
             };
+
+        private Source GetSourceWithNull() =>
+            new Source
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Buckaroo",
+                LastName = "Banzai",
+                Created = DateTime.UtcNow,
+                FullName = new SourceName("Buckaroo", "Banzai") { MiddleName = "Alan" },
+            };
+
+        public class Source
+        {
+            public Guid Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            #nullable enable
+            public SourceAddress? PrimaryAddress { get; set; }
+            #nullable disable
+            public DateTime Created { get; set; }
+        }
+
+        public class Dest
+        {
+            public Guid Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            #nullable enable
+            public DestinationAddress? PrimaryAddress { get; set; }
+            #nullable disable
+            public DateTime Created { get; set; }
+        }
 
         private SourceClass GetSourceClassWithNull() =>
             new SourceClass
