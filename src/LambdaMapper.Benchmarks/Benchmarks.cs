@@ -71,12 +71,12 @@ namespace LambdaMapper.Benchmarks
         //     var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
         // }
 
-        // [Benchmark]
-        // public void Automapper()
-        // {
-        //     var sourceClass = GetSourceClass();
-        //     var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
-        // }
+        [Benchmark]
+        public void Automapper()
+        {
+            var sourceClass = GetSourceClass();
+            var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
+        }
 
         [Benchmark(Description = "LambdaMapper")]
         public void LambdaMapperBenchmarks()
@@ -85,19 +85,19 @@ namespace LambdaMapper.Benchmarks
             var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
         }
 
-        // [Benchmark]
-        // public void AutomapperWithNull()
-        // {
-        //     var sourceClass = GetSourceClassWithNull();
-        //     var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
-        // }
+        [Benchmark]
+        public void AutomapperWithNull()
+        {
+            var sourceClass = GetSourceClassWithNull();
+            var destinationClass = _mapper.Map<SourceClass, DestinationClass>(sourceClass);
+        }
 
-        // [Benchmark]
-        // public void LambdaMapperWithNull()
-        // {
-        //     var sourceClass = GetSourceClassWithNull();
-        //     var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
-        // }
+        [Benchmark]
+        public void LambdaMapperWithNull()
+        {
+            var sourceClass = GetSourceClassWithNull();
+            var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
+        }
 
         private SourceClass GetSourceClass() =>
             new SourceClass

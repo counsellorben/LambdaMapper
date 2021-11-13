@@ -32,7 +32,7 @@ namespace LambdaMapper.Internal
             var enumeratorType = getEnumerator.ReturnType;
             var enumerator = Expression.Variable(enumeratorType, "enumerator");
             var resetMethod = typeof(IEnumerator).GetMethod(nameof(IEnumerator.Reset));
-            var isList = enumeratorType.DeclaringType is not null;
+            var isList = !(enumeratorType.DeclaringType is null);
             var count = isList
                 ? typeof(MapperExpressionHelpers)
                     .GetMethod(nameof(MapperExpressionHelpers.ListCount))
