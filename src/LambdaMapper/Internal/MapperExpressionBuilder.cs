@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 // using System.Linq.Expressions;
 using FastExpressionCompiler.LightExpression;
+using static FastExpressionCompiler.LightExpression.Expression;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
@@ -26,7 +27,7 @@ namespace LambdaMapper.Internal
         {
             var sourceProperties = typeof(TSource).GetProperties();
             var destinationProperties = typeof(TDestination).GetProperties().Where(dest => dest.CanWrite);
-            var parameterExpression = Expression.Parameter(typeof(TSource), "src");
+            var parameterExpression = Parameter(typeof(TSource), $"src{typeof(TSource).Name}");
 
             var bindings = destinationProperties
                 .Select(destinationProperty =>
@@ -42,16 +43,15 @@ namespace LambdaMapper.Internal
             }
             else
             {
-                lambda = Expression.Lambda<Func<TSource, TDestination>>(
-                    Expression.MemberInit(
-                        Expression.New(typeof(TDestination)),
+                lambda = Lambda<Func<TSource, TDestination>>(
+                    MemberInit(
+                        New(typeof(TDestination)),
                         bindings.ToArray()),
                     parameterExpression);
             }
 
             _typeMapperExpressions.TryAdd(typeof(TSource), lambda);
-            var code = lambda.ToCSharpString();
-            return lambda.CompileFast();
+            return lambda.CompileFast(true, CompilerFlags.NoInvocationLambdaInlining);
         }
 
         private static Expression<Func<TSource, TDestination>> CreateMapperForObjectWithoutParameterlessConstructor<TSource, TDestination>(
@@ -78,17 +78,17 @@ namespace LambdaMapper.Internal
                 var ctorExpressions = bindings
                     .Where(b => parameterNames.Contains(b.Member.Name))
                     .Select(b => b.Expression);
-                return Expression.Lambda<Func<TSource, TDestination>>(
-                    Expression.MemberInit(
-                        Expression.New(
+                return Lambda<Func<TSource, TDestination>>(
+                    MemberInit(
+                        New(
                             ctor,
                             ctorExpressions.ToArray()),
                         bindings.ToArray()),
                     parameterExpression);
             }
 
-            return Expression.Lambda<Func<TSource, TDestination>>(
-                Expression.New(
+            return Lambda<Func<TSource, TDestination>>(
+                New(
                     ctor,
                     GetConstructorArguments<TDestination>(bindings).ToArray()),
                 parameterExpression);
@@ -137,7 +137,7 @@ namespace LambdaMapper.Internal
             }
 
             var sourceProperties = typeof(T).GetProperties().Where(dest => dest.CanWrite);
-            var parameterExpression = Expression.Parameter(typeof(T), "src");
+            var parameterExpression = Parameter(typeof(T), $"src{typeof(T).Name}");
             var bindings = typeof(T)
                 .GetProperties()
                 .Where(p => p.CanWrite)
@@ -152,9 +152,9 @@ namespace LambdaMapper.Internal
             }
             else
             {
-                lambda = Expression.Lambda<Func<T, T>>(
-                    Expression.MemberInit(
-                        Expression.New(typeof(T)),
+                lambda = Lambda<Func<T, T>>(
+                    MemberInit(
+                        New(typeof(T)),
                         bindings.ToArray()),
                     parameterExpression);
             }
@@ -184,17 +184,17 @@ namespace LambdaMapper.Internal
                 var ctorExpressions = bindings
                     .Where(b => parameterNames.Contains(b.Member.Name))
                     .Select(b => b.Expression);
-                return Expression.Lambda<Func<T, T>>(
-                    Expression.MemberInit(
-                        Expression.New(
+                return Lambda<Func<T, T>>(
+                    MemberInit(
+                        New(
                             ctor,
                             ctorExpressions.ToArray()),
                         bindings.ToArray()),
                     parameterExpression);
             }
 
-            return Expression.Lambda<Func<T, T>>(
-                Expression.New(
+            return Lambda<Func<T, T>>(
+                New(
                     ctor,
                     GetConstructorArguments<T>(bindings).ToArray()),
                 parameterExpression);
@@ -206,8 +206,8 @@ namespace LambdaMapper.Internal
 
         private static void AddTypeCloner(Type genericTypeArgument)
         {
-            var actionExpression = Expression.Lambda<Action>(
-                Expression.Call(
+            var actionExpression = Lambda<Action>(
+                Call(
                     typeof(MapperExpressionBuilder),
                     nameof(MapperExpressionBuilder.CreateCloner),
                     new[]
@@ -266,12 +266,12 @@ namespace LambdaMapper.Internal
                     if (sourceChildProperty != null)
                     {
                         return ExpressionNullableBind(
-                            Expression.Property(parameterExpression, sourceProperty),
+                            Property(parameterExpression, sourceProperty),
                             sourceChildProperty,
                             destinationProperty,
                             destinationType,
-                            Expression.Property(
-                                Expression.Property(
+                            Property(
+                                Property(
                                     parameterExpression,
                                     sourceProperty),
                                 sourceChildProperty));
@@ -291,8 +291,8 @@ namespace LambdaMapper.Internal
             var sourceProperty = sourceProperties.FirstOrDefault(src =>
                 src.Name == destinationProperty.Name);
             var sourceType = sourceProperty.PropertyType;
-            var source = Expression.Property(parameterExpression, sourceProperty);
-            var sourceParameterExpression = Expression.Parameter(sourceType, "srcItems");
+            var source = Property(parameterExpression, sourceProperty);
+            var sourceParameterExpression = Parameter(sourceType, $"srcItem{sourceType.Name}");
 
             if (!_typeMapperExpressions.ContainsKey(sourceType))
             {
@@ -300,16 +300,15 @@ namespace LambdaMapper.Internal
                 {
                     var sourceGenericTypes = sourceProperty.PropertyType.GenericTypeArguments;
                     var destinationGenericTypes = ((PropertyInfo)destinationProperty).PropertyType.GenericTypeArguments;
-                    var valueTypeMappers = new List<UnaryExpression>();
+                    var valueTypeMappers = new List<LambdaExpression>();
                     var counter = 0;
                     foreach (var sourceGenericType in sourceGenericTypes)
                     {
                         if (sourceGenericType != destinationGenericTypes[counter])
                         {
                             valueTypeMappers.Add(
-                                Expression.Quote(
-                                    _typeMapperExpressions
-                                        .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value));
+                                _typeMapperExpressions
+                                    .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value);
                         }
                         else
                         {
@@ -318,23 +317,22 @@ namespace LambdaMapper.Internal
                                 AddTypeCloner(sourceProperty.PropertyType);
                             }
                             valueTypeMappers.Add(
-                                Expression.Quote(
-                                    _typeClonerExpressions
-                                        .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value));
+                                _typeClonerExpressions
+                                    .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value);
                         }
                         counter++;
                     }
-                    return Expression.Bind(
+                    return Bind(
                         destinationProperty,
-                        Expression.Invoke(
-                            Expression.Lambda(
+                        Invoke(
+                            Lambda(
                                 MapperExpressionHelpers.MapEachValueType(
                                     sourceProperty.PropertyType,
                                     ((PropertyInfo)destinationProperty).PropertyType,
-                                    Expression.Property(parameterExpression, sourceProperty),
+                                    sourceParameterExpression,
                                     valueTypeMappers),
                                 sourceParameterExpression),
-                            Expression.Property(parameterExpression, sourceProperty)));
+                            Property(parameterExpression, sourceProperty)));
                 }
 
                 if (sourceProperty.PropertyType.IsConstructedGenericType)
@@ -343,6 +341,9 @@ namespace LambdaMapper.Internal
                         .GenericTypeArguments;
                     var destinationGenericTypeArguments = destinationType
                         .GenericTypeArguments;
+                    sourceParameterExpression = Parameter(
+                        sourceType,
+                        $"srcItem{sourceGenericTypeArguments.Last().Name}");
 
                     if (sourceType.GetInterface(nameof(IDictionary)) != null)
                     {
@@ -352,19 +353,19 @@ namespace LambdaMapper.Internal
 
                         var dictionaryMapper = _typeMapperExpressions[sourceGenericTypeArguments[1]];
                         return ExpressionNullableBind(
-                            Expression.Property(parameterExpression, sourceProperty),
+                            Property(parameterExpression, sourceProperty),
                             sourceProperty,
                             destinationProperty,
                             destinationType,
-                            Expression.Invoke(
-                                Expression.Lambda(
+                            Invoke(
+                                Lambda(
                                     MapperExpressionHelpers.MapEachIDictionary(
                                         sourceType,
                                         destinationType,
-                                        source,
-                                        Expression.Quote(dictionaryMapper)),
+                                        sourceParameterExpression,
+                                        dictionaryMapper),
                                     sourceParameterExpression),
-                                Expression.Property(parameterExpression, sourceProperty)));
+                                Property(parameterExpression, sourceProperty)));
                     }
 
                     var sourceGenericTypeArgument = sourceGenericTypeArguments[0];
@@ -373,19 +374,19 @@ namespace LambdaMapper.Internal
 
                     var collectionMapper = _typeMapperExpressions[sourceGenericTypeArgument];
                     return ExpressionNullableBind(
-                        Expression.Property(parameterExpression, sourceProperty),
+                        Property(parameterExpression, sourceProperty),
                         sourceProperty,
                         destinationProperty,
                         destinationType,
-                        Expression.Invoke(
-                            Expression.Lambda(
+                        Invoke(
+                            Lambda(
                                 MapperExpressionHelpers.MapEachIEnumerable(
                                     sourceType,
                                     destinationType,
                                     sourceParameterExpression,
-                                    Expression.Quote(collectionMapper)),
+                                    collectionMapper),
                                 sourceParameterExpression),
-                            Expression.Property(parameterExpression, sourceProperty)));
+                            Property(parameterExpression, sourceProperty)));
                 }
 
                 throw new Exception("mapper missing");
@@ -393,13 +394,13 @@ namespace LambdaMapper.Internal
 
             var mapper = _typeMapperExpressions[sourceType];
             return ExpressionNullableBind(
-                Expression.Property(parameterExpression, sourceProperty),
+                Property(parameterExpression, sourceProperty),
                 sourceProperty,
                 destinationProperty,
                 destinationType,
-                Expression.Invoke(
-                    Expression.Quote(mapper),
-                    Expression.Property(parameterExpression, sourceProperty)));
+                Invoke(
+                    mapper,
+                    Property(parameterExpression, sourceProperty)));
         }
 
         private static MemberAssignment BuildClonerBinding(
@@ -408,6 +409,10 @@ namespace LambdaMapper.Internal
             PropertyInfo sourceProperty,
             Type destinationType)
         {
+            var sourceParameterExpression = Parameter(
+                sourceProperty.PropertyType,
+                $"srcItems{sourceProperty.PropertyType.Name}");
+
             if (sourceProperty.PropertyType.IsConstructedGenericType || sourceProperty.PropertyType.IsNested)
             {
                 if (!_typeClonerExpressions.ContainsKey(sourceProperty.PropertyType))
@@ -415,67 +420,77 @@ namespace LambdaMapper.Internal
                     AddTypeCloner(sourceProperty.PropertyType);
                 }
 
-                var sourceParameterExpression = Expression.Parameter(sourceProperty.PropertyType, "srcItems");
+                if (sourceProperty.PropertyType.IsConstructedGenericType)
+                {
+                    var sourceGenericTypeArguments = sourceProperty
+                        .PropertyType
+                        .GenericTypeArguments;
+                    var destinationGenericTypeArguments = destinationType
+                        .GenericTypeArguments;
+                    sourceParameterExpression = Parameter(
+                        sourceProperty.PropertyType,
+                        $"srcItems{sourceGenericTypeArguments[0].Name}");
+                }
+
                 if (sourceProperty.PropertyType.IsValueType)
                 {
                     var genericTypes = sourceProperty.PropertyType.GenericTypeArguments;
-                    var valueTypeCloners = new List<UnaryExpression>();
+                    var valueTypeCloners = new List<LambdaExpression>();
                     foreach (var genericType in genericTypes)
                     {
                         valueTypeCloners.Add(
-                            Expression.Quote(
-                                _typeClonerExpressions
-                                    .Single(kvp => genericTypes.Contains(kvp.Key)).Value));
+                            _typeClonerExpressions
+                                .Single(kvp => genericTypes.Contains(kvp.Key)).Value);
                     }
-                    return Expression.Bind(
+                    return Bind(
                         destinationProperty,
-                        Expression.Invoke(
-                            Expression.Lambda(
+                        Invoke(
+                            Lambda(
                                 MapperExpressionHelpers.MapEachValueType(
                                     sourceProperty.PropertyType,
                                     ((PropertyInfo)destinationProperty).PropertyType,
-                                    Expression.Property(parameterExpression, sourceProperty),
+                                    sourceParameterExpression,
                                     valueTypeCloners),
                                 sourceParameterExpression),
-                            Expression.Property(parameterExpression, sourceProperty)));
+                            Property(parameterExpression, sourceProperty)));
                 }
 
                 if (sourceProperty.PropertyType.GetInterface(nameof(IDictionary)) != null)
                 {
                     var dictionaryCloner = _typeClonerExpressions[sourceProperty.PropertyType.GenericTypeArguments[1]];
                     return ExpressionNullableBind(
-                        Expression.Property(parameterExpression, sourceProperty),
+                        Property(parameterExpression, sourceProperty),
                         sourceProperty,
                         destinationProperty,
                         destinationType,
-                        Expression.Invoke(
-                            Expression.Lambda(
+                        Invoke(
+                            Lambda(
                                 MapperExpressionHelpers.MapEachIDictionary(
                                     sourceProperty.PropertyType,
                                     ((PropertyInfo)destinationProperty).PropertyType,
-                                    Expression.Property(parameterExpression, sourceProperty),
-                                    Expression.Quote(dictionaryCloner)),
+                                    sourceParameterExpression,
+                                    dictionaryCloner),
                                 sourceParameterExpression),
-                            Expression.Property(parameterExpression, sourceProperty)));
+                            Property(parameterExpression, sourceProperty)));
                 }
 
                 var cloner = _typeClonerExpressions[sourceProperty.PropertyType];
                 return ExpressionNullableBind(
-                    Expression.Property(parameterExpression, sourceProperty),
+                    Property(parameterExpression, sourceProperty),
                     sourceProperty,
                     destinationProperty,
                     destinationType,
-                    Expression.Invoke(
-                        Expression.Quote(cloner),
-                        Expression.Property(parameterExpression, sourceProperty)));
+                    Invoke(
+                        cloner,
+                        Property(parameterExpression, sourceProperty)));
             }
 
             return ExpressionNullableBind(
-                Expression.Property(parameterExpression, sourceProperty),
+                Property(parameterExpression, sourceProperty),
                 sourceProperty,
                 destinationProperty,
                 destinationType,
-                Expression.Property(parameterExpression, sourceProperty));
+                Property(parameterExpression, sourceProperty));
         }
 
         private static MemberAssignment ExpressionNullableBind(
@@ -487,14 +502,14 @@ namespace LambdaMapper.Internal
         {
             if (sourceProperty.GetCustomAttribute<NullableAttribute>() != null)
             {
-                return Expression.Bind(
+                return Bind(
                     destinationProperty,
-                    Expression.Condition(
-                        Expression.NotEqual(memberExpression, Expression.Constant(null)),
+                    Condition(
+                        NotEqual(memberExpression, Constant(null)),
                         bindingExpression,
-                        Expression.Constant(null, destinationType)));
+                        Constant(null, destinationType)));
             }
-            return Expression.Bind(
+            return Bind(
                 destinationProperty,
                 bindingExpression);
         }

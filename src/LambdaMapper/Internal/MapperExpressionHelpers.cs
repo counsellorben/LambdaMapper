@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 // using System.Linq.Expressions;
 using FastExpressionCompiler.LightExpression;
+using static FastExpressionCompiler.LightExpression.Expression;
 using System.Runtime.CompilerServices;
 
 namespace LambdaMapper.Internal
@@ -14,23 +15,23 @@ namespace LambdaMapper.Internal
             Type sourceType,
             Type destinationType,
             ParameterExpression source,
-            UnaryExpression mapper)
+            LambdaExpression mapper)
         {
-            var counter = Expression.Variable(typeof(int), "counter");
-            var length = Expression.Variable(typeof(int), "length");
+            var counter = Variable(typeof(int), "counter");
+            var length = Variable(typeof(int), "length");
             var underlyingSourceType = sourceType.GenericTypeArguments.First();
             var underlyingDestinationType = destinationType.GenericTypeArguments.First();
-            var array = Expression.NewArrayBounds(underlyingDestinationType, length);
-            var destination = Expression.Variable(array.Type, "dest");
-            var destinationAccess = Expression.ArrayAccess(destination, counter);
-            var element = Expression.Parameter(underlyingSourceType, "element");
+            var array = NewArrayBounds(underlyingDestinationType, length);
+            var destination = Variable(array.Type, "dest");
+            var destinationAccess = ArrayAccess(destination, counter);
+            var element = Parameter(underlyingSourceType, "element");
             var getEnumerator = sourceType.GetMethod(nameof(IEnumerable.GetEnumerator));
             if (getEnumerator is null)
                 getEnumerator = typeof(IEnumerable<>)
                     .MakeGenericType(sourceType)
                     .GetMethod(nameof(IEnumerable.GetEnumerator));
             var enumeratorType = getEnumerator.ReturnType;
-            var enumerator = Expression.Variable(enumeratorType, "enumerator");
+            var enumerator = Variable(enumeratorType, "enumerator");
             var resetMethod = typeof(IEnumerator).GetMethod(nameof(IEnumerator.Reset));
             var isList = !(enumeratorType.DeclaringType is null);
             var count = isList
@@ -44,61 +45,61 @@ namespace LambdaMapper.Internal
             {
                 var listType = typeof(List<>)
                     .MakeGenericType(destinationType.GenericTypeArguments);
-                destination = Expression.Variable(array.Type, "dest");
-                destination = Expression.Variable(
+                destination = Variable(array.Type, "dest");
+                destination = Variable(
                     listType,
                     "dest");
                 var addMethod = listType.GetMethod("Add");
 
-                return Expression.Block(
+                return Block(
                     new[] { enumerator, destination },
-                    Expression.IfThen(
-                        Expression.NotEqual(source, Expression.Constant(null)),
-                        Expression.Block(
-                            Expression.Assign(
+                    IfThen(
+                        NotEqual(source, Constant(null)),
+                        Block(
+                            Assign(
                                 destination,
-                                Expression.New(
+                                New(
                                     typeof(List<>)
                                     .MakeGenericType(destinationType.GenericTypeArguments))),
-                            Expression.Assign(enumerator, Expression.Call(source, getEnumerator)),
-                            Expression.Call(enumerator, resetMethod),
+                            Assign(enumerator, Call(source, getEnumerator)),
+                            Call(enumerator, resetMethod),
                             EnumerationLoop(
                                 enumerator,
-                                Expression.Block(
+                                Block(
                                     new[] { element },
-                                    Expression.Assign(element, Expression.Property(enumerator, "Current")),
-                                    Expression.Call(
+                                    Assign(element, Property(enumerator, "Current")),
+                                    Call(
                                         destination,
                                         addMethod,
-                                        new [] { Expression.Invoke(
+                                        new [] { Invoke(
                                             mapper,
                                             element)}))))),
                     destination);
             }
 
-            return Expression.Block(
+            return Block(
                 new[] { counter, length, enumerator, destination },
-                Expression.IfThen(
-                    Expression.NotEqual(source, Expression.Constant(null)),
-                    Expression.Block(
-                        Expression.Assign(counter, Expression.Constant(0)),
-                        Expression.Assign(enumerator, Expression.Call(source, getEnumerator)),
-                        Expression.Assign(length, Expression.Call(count, new [] { enumerator })),
-                        Expression.Call(enumerator, resetMethod),
-                        Expression.Assign(destination, array),
+                IfThen(
+                    NotEqual(source, Constant(null)),
+                    Block(
+                        Assign(counter, Constant(0)),
+                        Assign(enumerator, Call(source, getEnumerator)),
+                        Assign(length, Call(count, new [] { enumerator })),
+                        Call(enumerator, resetMethod),
+                        Assign(destination, array),
                         EnumerationLoop(
                             enumerator,
-                            Expression.Block(
+                            Block(
                                 new[] { element },
-                                Expression.Assign(element, Expression.Property(enumerator, "Current")),
-                                Expression.Assign(
+                                Assign(element, Property(enumerator, "Current")),
+                                Assign(
                                     destinationAccess,
-                                    Expression.Invoke(
+                                    Invoke(
                                         mapper,
                                         element)),
-                                Expression.Assign(
+                                Assign(
                                     counter,
-                                    Expression.Add(counter, Expression.Constant(1))))))),
+                                    Add(counter, Constant(1))))))),
                 destination);
         }
 
@@ -106,7 +107,7 @@ namespace LambdaMapper.Internal
             Type sourceType,
             Type destinationType,
             Expression source,
-            UnaryExpression mapper)
+            LambdaExpression mapper)
         {
             var sourceGenericTypeArguments = sourceType
                 .GenericTypeArguments;
@@ -115,31 +116,31 @@ namespace LambdaMapper.Internal
                     sourceGenericTypeArguments[0],
                     sourceGenericTypeArguments[1]);
 
-            var destination = Expression.Variable(destinationType, "dest");
-            var sourceKvp = Expression.Parameter(sourceKvpType, "sourceKvp");
+            var destination = Variable(destinationType, "dest");
+            var sourceKvp = Parameter(sourceKvpType, "sourceKvp");
             var getEnumerator = sourceType.GetMethod(nameof(IEnumerable.GetEnumerator));
             var enumeratorType = getEnumerator.ReturnType;
-            var enumerator = Expression.Variable(enumeratorType, "enumerator");
+            var enumerator = Variable(enumeratorType, "enumerator");
             var addMethod = destinationType.GetMethod(nameof(IDictionary.Add));
 
-            return Expression.Block(
+            return Block(
                 new[] { enumerator, destination },
-                Expression.Assign(enumerator, Expression.Call(source, getEnumerator)),
-                Expression.Assign(destination, Expression.New(destinationType)),
+                Assign(enumerator, Call(source, getEnumerator)),
+                Assign(destination, New(destinationType)),
                 EnumerationLoop(
                     enumerator,
-                    Expression.Block(
+                    Block(
                         new[] { sourceKvp },
-                        Expression.Assign(sourceKvp, Expression.Property(enumerator, nameof(IEnumerator.Current))),
-                        Expression.Call(
+                        Assign(sourceKvp, Property(enumerator, nameof(IEnumerator.Current))),
+                        Call(
                             destination,
                             addMethod,
-                            Expression.Property(
+                            Property(
                                 sourceKvp,
                                 sourceKvpType.GetProperty("Key")),
-                            Expression.Invoke(
+                            Invoke(
                                 mapper,
-                                Expression.Property(
+                                Property(
                                     sourceKvp,
                                     sourceKvpType.GetProperty("Value")))))),
                 destination);
@@ -149,17 +150,17 @@ namespace LambdaMapper.Internal
             Type sourceType,
             Type destinationType,
             Expression source,
-            IEnumerable<UnaryExpression> mappers)
+            IEnumerable<LambdaExpression> mappers)
         {
             var sourceTypeArguments = sourceType.GenericTypeArguments;
             var destinationTypeArguments = destinationType.GenericTypeArguments;
-            var itemCount = Expression.Constant(sourceTypeArguments.Length);
+            var itemCount = Constant(sourceTypeArguments.Length);
             var tuple = sourceType.GetInterface(nameof(ITuple));
-            var counter = Expression.Variable(typeof(int), "counter");
-            var array = Expression.NewArrayBounds(typeof(ParameterExpression), itemCount);
+            var counter = Variable(typeof(int), "counter");
+            var array = NewArrayBounds(typeof(ParameterExpression), itemCount);
             var ctorInfo = destinationType.GetConstructors().First();
             var getItemMethod = tuple.GetMethod("get_Item");
-            var breakLabel = Expression.Label();
+            var breakLabel = Label();
 
             var expressions = new List<Expression>();
             var sourceItemParameters = new List<ParameterExpression>();
@@ -167,28 +168,28 @@ namespace LambdaMapper.Internal
             for (var i = 0; i < sourceTypeArguments.Length; i++)
             {
                 var mapper = mappers.ElementAt(i);
-                var sourceItemParameter = Expression.Parameter(sourceTypeArguments[i], $"sourceItem{i}");
+                var sourceItemParameter = Parameter(sourceTypeArguments[i], $"sourceItem{i}");
                 sourceItemParameters.Add(sourceItemParameter);
-                var destinationItemParameter = Expression.Parameter(destinationTypeArguments[i], $"destinationItem{i}");
+                var destinationItemParameter = Parameter(destinationTypeArguments[i], $"destinationItem{i}");
                 destinationItemParameters.Add(destinationItemParameter);
                 expressions.AddRange( new Expression []
                 {
-                    Expression.Assign(
+                    Assign(
                         sourceItemParameter,
-                        Expression.Convert(
-                            Expression.Call(
+                        Convert(
+                            Call(
                                 source,
                                 getItemMethod,
                                 new [] { counter }),
                             sourceTypeArguments[i])),
-                    Expression.IfThen(
-                        Expression.NotEqual(sourceItemParameter, Expression.Constant(null)),
-                        Expression.Assign(
+                    IfThen(
+                        NotEqual(sourceItemParameter, Constant(null)),
+                        Assign(
                             destinationItemParameter,
-                            Expression.Invoke(
+                            Invoke(
                                 mapper,
                                 sourceItemParameter))),
-                    Expression.Assign(counter, Expression.Add(counter, Expression.Constant(1)))
+                    Assign(counter, Add(counter, Constant(1)))
                 });
             }
 
@@ -196,10 +197,10 @@ namespace LambdaMapper.Internal
             expressionParameters.AddRange(sourceItemParameters);
             expressionParameters.Add(counter);
             var blockExpressions = new List<Expression>();
-            blockExpressions.Add(Expression.Assign(counter, Expression.Constant(0)));
+            blockExpressions.Add(Assign(counter, Constant(0)));
             blockExpressions.AddRange(expressions);
-            blockExpressions.Add(Expression.New(ctorInfo, destinationItemParameters.ToArray()));
-            return Expression.Block(
+            blockExpressions.Add(New(ctorInfo, destinationItemParameters.ToArray()));
+            return Block(
                 expressionParameters,
                 blockExpressions);
         }
@@ -225,7 +226,7 @@ namespace LambdaMapper.Internal
         public static Expression EnumerationLoop(ParameterExpression enumerator, Expression loopContent)
         {
             var loop = While(
-                Expression.Call(
+                Call(
                     enumerator,
                     typeof(IEnumerator).GetMethod(nameof(IEnumerator.MoveNext))),
                 loopContent);
@@ -236,23 +237,22 @@ namespace LambdaMapper.Internal
 
             if (!enumeratorType.IsValueType)
             {
-                var disposable = Expression.Variable(typeof(IDisposable), "disposable");
-                return Expression.TryCatchFinally(
+                var disposable = Variable(typeof(IDisposable), "disposable");
+                return Block(
                     loop,
-                    Expression.Block(new[] { disposable },
-                        Expression.Assign(disposable, Expression.TypeAs(enumerator, typeof(IDisposable))),
-                        Expression.IfThen(
-                            Expression.NotEqual(disposable, Expression.Constant(null)),
-                            Expression.Call(
+                    Block(new[] { disposable },
+                        Assign(disposable, TypeAs(enumerator, typeof(IDisposable))),
+                        IfThen(
+                            NotEqual(disposable, Constant(null)),
+                            Call(
                                 disposable,
-                                typeof(IDisposable).GetMethod(nameof(IDisposable.Dispose))))),
-                    new CatchBlock[0]);
+                                typeof(IDisposable).GetMethod(nameof(IDisposable.Dispose))))));
             }
 
             return loop;
         }
 
-        public static TryExpression Using(ParameterExpression variable, Expression content)
+        public static BlockExpression Using(ParameterExpression variable, Expression content)
         {
             var variableType = variable.Type;
 
@@ -263,38 +263,35 @@ namespace LambdaMapper.Internal
 
             if (variableType.IsValueType)
             {
-                return Expression.TryCatchFinally(
+                return Block(
                     content,
-                    Expression.Call(Expression.Convert(variable, typeof(IDisposable)), getMethod),
-                    new CatchBlock[0]);
+                    Call(Convert(variable, typeof(IDisposable)), getMethod));
             }
 
             if (variableType.IsInterface)
             {
-                return Expression.TryCatchFinally(
+                return Block(
                     content,
-                    Expression.IfThen(
-                        Expression.NotEqual(variable, Expression.Constant(null)),
-                        Expression.Call(variable, getMethod)),
-                    new CatchBlock[0]);
+                    IfThen(
+                        NotEqual(variable, Constant(null)),
+                        Call(variable, getMethod)));
             }
 
-            return Expression.TryCatchFinally(
+            return Block(
                 content,
-                Expression.IfThen(
-                    Expression.NotEqual(variable, Expression.Constant(null)),
-                    Expression.Call(Expression.Convert(variable, typeof(IDisposable)), getMethod)),
-                new CatchBlock[0]);
+                IfThen(
+                    NotEqual(variable, Constant(null)),
+                    Call(Convert(variable, typeof(IDisposable)), getMethod)));
         }
 
         public static LoopExpression While(Expression loopCondition, Expression loopContent)
         {
-            var breakLabel = Expression.Label();
-            return Expression.Loop(
-                Expression.IfThenElse(
+            var breakLabel = Label();
+            return Loop(
+                IfThenElse(
                     loopCondition,
                     loopContent,
-                    Expression.Break(breakLabel)),
+                    Break(breakLabel)),
                 breakLabel);
         }
     }
