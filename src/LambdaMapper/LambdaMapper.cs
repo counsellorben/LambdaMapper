@@ -62,7 +62,7 @@ namespace LambdaMapper
                 var typeFuncExpr = _typeMapperExpressions.First();
                 try
                 {
-                    var func = typeFuncExpr.expression.CompileFast();
+                    var func = typeFuncExpr.expression.Compile();
                     var result = func.DynamicInvoke();
                     _typeMappers.TryAdd(typeFuncExpr.type, result);
                     consecutiveErrors = 0;

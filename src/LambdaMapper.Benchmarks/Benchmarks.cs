@@ -36,6 +36,7 @@ namespace LambdaMapper.Benchmarks
             LambdaMapper.CreateMap<SourceAddress, DestinationAddress>();
             LambdaMapper.CreateMap<SourceRole, DestinationRole>();
             LambdaMapper.CreateMap<SourceName, DestinationName>();
+            // LambdaMapper.CreateMap<Source, Dest>();
             LambdaMapper.InstantiateMapper();
 
             TypeAdapterConfig.GlobalSettings.Compiler = exp => exp.CompileFast();
@@ -55,6 +56,93 @@ namespace LambdaMapper.Benchmarks
                 .IgnoreNullValues(true);
             var sourceClass = GetSourceClass();
             var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
+        }
+
+        // [Benchmark]
+        // public void LambdaMapperFEC()
+        // {
+        //     var source = GetSource();
+        //     var destinationClass = LambdaMapper.MapObject<Source, Dest>(source);
+        // }
+
+        // [Benchmark]
+        // public void LambdaMapperFECWithNull()
+        // {
+        //     var source = GetSourceWithNull();
+        //     var destinationClass = LambdaMapper.MapObject<Source, Dest>(source);
+        // }
+
+        private Source GetSource() =>
+            new Source
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Buckaroo",
+                LastName = "Banzai",
+                PrimaryAddress = new SourceAddress
+                {
+                    AddressLine = "999 Pecan Street",
+                    City = "Peoria",
+                    State = "Illinois",
+                    PostalCode = "61525"
+                },
+                Created = DateTime.UtcNow,
+                FullName = new SourceName("Buckaroo", "Banzai"),
+                Addresses = new List<SourceAddress>
+                {
+                    new SourceAddress
+                    {
+                        AddressLine = "123 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    }
+                },
+            };
+
+        private Source GetSourceWithNull() =>
+            new Source
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Buckaroo",
+                LastName = "Banzai",
+                Created = DateTime.UtcNow,
+                FullName = new SourceName("Buckaroo", "Banzai"),
+                Addresses = new List<SourceAddress>
+                {
+                    new SourceAddress
+                    {
+                        AddressLine = "123 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    }
+                },
+            };
+
+        public class Source
+        {
+            public Guid Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            #nullable enable
+            public SourceAddress? PrimaryAddress { get; set; }
+            #nullable disable
+            public IEnumerable<SourceAddress> Addresses { get; set; }
+            public DateTime Created { get; set; }
+            public SourceName FullName { get; init; }
+        }
+
+        public class Dest
+        {
+            public Guid Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            #nullable enable
+            public DestinationAddress? PrimaryAddress { get; set; }
+            #nullable disable
+            public IEnumerable<DestinationAddress> Addresses { get; set; }
+            public DateTime Created { get; set; }
+            public DestinationName FullName { get; init; }
         }
 
         // [Benchmark]

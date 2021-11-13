@@ -18,7 +18,15 @@ namespace LambdaMapper.Tests
         public void FastExpressionCompilerTest()
         {
             LambdaMapper.CreateMap<Source, Dest>();
-            var src = GetSourceWithNull();
+            LambdaMapper.CreateMap<SourceAddress, DestinationAddress>();
+            LambdaMapper.CreateMap<SourceName, DestinationName>();
+            LambdaMapper.CreateMap<SourceRole, DestinationRole>();
+            LambdaMapper.InstantiateMapper();
+            var srcWithNull = GetSourceWithNull();
+            var destWithNull = LambdaMapper.MapObject<Source, Dest>(srcWithNull);
+            Assert.AreEqual(srcWithNull.Id, destWithNull.Id);
+
+            var src = GetSource();
             var dest = LambdaMapper.MapObject<Source, Dest>(src);
             Assert.AreEqual(src.Id, dest.Id);
         }
@@ -97,9 +105,9 @@ namespace LambdaMapper.Tests
             Assert.AreEqual(
                 sourceClassWithNull.Roles.First().Value.RoleName,
                 destinationClassWithNull.Roles.First().Value.RoleName);
-            Assert.AreEqual(
-                sourceClassWithNull.AddressChange.Operations.First().value,
-                destinationClassWithNull.AddressChange.Operations.First().value);
+            // Assert.AreEqual(
+            //     sourceClassWithNull.AddressChange.Operations.First().value,
+            //     destinationClassWithNull.AddressChange.Operations.First().value);
 
             var sourceClass = GetSourceClass();
             var destinationClass = sourceClass.Adapt<DestinationClass>(config);
@@ -113,9 +121,9 @@ namespace LambdaMapper.Tests
             Assert.AreEqual(
                 sourceClass.TupleAddresses.address1.AddressLine,
                 destinationClass.TupleAddresses.address1.AddressLine);
-            Assert.AreEqual(
-                sourceClass.AddressChange.Operations.First().value,
-                destinationClass.AddressChange.Operations.First().value);
+            // Assert.AreEqual(
+            //     sourceClass.AddressChange.Operations.First().value,
+            //     destinationClass.AddressChange.Operations.First().value);
         }
 
         [Test]
@@ -181,6 +189,89 @@ namespace LambdaMapper.Tests
                 $"{NUMBER_OF_ITERATIONS:#,###} Automapper iterations took {stopwatch.ElapsedMilliseconds:#,###} milliseconds");
         }
 
+        private Source GetSource() =>
+            new Source
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Buckaroo",
+                LastName = "Banzai",
+                PrimaryAddress = new SourceAddress
+                {
+                    AddressLine = "999 Pecan Street",
+                    City = "Peoria",
+                    State = "Illinois",
+                    PostalCode = "61525"
+                },
+                Created = DateTime.UtcNow,
+                FullName = new SourceName("Buckaroo", "Banzai") { MiddleName = "Alan" },
+                Addresses = new List<SourceAddress>
+                {
+                    new SourceAddress
+                    {
+                        AddressLine = "123 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    }
+                },
+                Roles = new Dictionary<int, SourceRole>
+                {
+                    { 0, new SourceRole { RoleName = "Ruler of all" } }
+                },
+            };
+
+        private Source GetSourceWithNull() =>
+            new Source
+            {
+                Id = Guid.NewGuid(),
+                FirstName = "Buckaroo",
+                LastName = "Banzai",
+                Created = DateTime.UtcNow,
+                FullName = new SourceName("Buckaroo", "Banzai") { MiddleName = "Alan" },
+                Addresses = new List<SourceAddress>
+                {
+                    new SourceAddress
+                    {
+                        AddressLine = "123 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    }
+                },
+                Roles = new Dictionary<int, SourceRole>
+                {
+                    { 0, new SourceRole { RoleName = "Ruler of all" } }
+                },
+            };
+
+        public class Source
+        {
+            public Guid Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            #nullable enable
+            public SourceAddress? PrimaryAddress { get; set; }
+            #nullable disable
+            public IEnumerable<SourceAddress> Addresses { get; set; }
+            public DateTime Created { get; set; }
+            public SourceName FullName { get; init; }
+            public Dictionary<int, SourceRole> Roles { get; set; }
+        }
+
+        public class Dest
+        {
+            public Guid Id { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            #nullable enable
+            public DestinationAddress? PrimaryAddress { get; set; }
+            #nullable disable
+            public IEnumerable<DestinationAddress> Addresses { get; set; }
+            public DateTime Created { get; set; }
+            public DestinationName FullName { get; init; }
+            public Dictionary<int, DestinationRole> Roles { get; set; }
+        }
+
         private SourceClass GetSourceClass() =>
             new SourceClass
             {
@@ -238,38 +329,6 @@ namespace LambdaMapper.Tests
                     },
                     new DefaultContractResolver())
             };
-
-        private Source GetSourceWithNull() =>
-            new Source
-            {
-                Id = Guid.NewGuid(),
-                FirstName = "Buckaroo",
-                LastName = "Banzai",
-                Created = DateTime.UtcNow,
-                FullName = new SourceName("Buckaroo", "Banzai") { MiddleName = "Alan" },
-            };
-
-        public class Source
-        {
-            public Guid Id { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            #nullable enable
-            public SourceAddress? PrimaryAddress { get; set; }
-            #nullable disable
-            public DateTime Created { get; set; }
-        }
-
-        public class Dest
-        {
-            public Guid Id { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            #nullable enable
-            public DestinationAddress? PrimaryAddress { get; set; }
-            #nullable disable
-            public DateTime Created { get; set; }
-        }
 
         private SourceClass GetSourceClassWithNull() =>
             new SourceClass
