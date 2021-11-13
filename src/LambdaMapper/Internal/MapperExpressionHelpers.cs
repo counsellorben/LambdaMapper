@@ -57,10 +57,7 @@ namespace LambdaMapper.Internal
                                 Expression.Assign(
                                     destination,
                                     Expression.New(typeof(List<>).MakeGenericType(destinationType.GenericTypeArguments))),
-                                Expression.Assign(counter, Expression.Constant(0)),
                                 Expression.Assign(enumerator, Expression.Call(source, getEnumerator)),
-                                Expression.Assign(length, Expression.Call(count, new [] { enumerator })),
-                                Expression.Call(enumerator, resetMethod),
                                 EnumerationLoop(
                                     enumerator,
                                     Expression.Block(
@@ -71,10 +68,7 @@ namespace LambdaMapper.Internal
                                             addMethod,
                                             new [] { Expression.Invoke(
                                                 mapper,
-                                                element)}),
-                                        Expression.Assign(
-                                            counter,
-                                            Expression.Add(counter, Expression.Constant(1))))))),
+                                                element)}))))),
                         destination);
             }
 
