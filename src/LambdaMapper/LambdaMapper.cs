@@ -3,13 +3,9 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Security;
 using FastExpressionCompiler;
 using LambdaMapper.Internal;
 
-[assembly: AllowPartiallyTrustedCallers]
-[assembly: SecurityTransparent]
-[assembly: SecurityRules(SecurityRuleSet.Level2,SkipVerificationInFullTrust=true)]
 namespace LambdaMapper
 {
     public static class LambdaMapper
@@ -57,6 +53,7 @@ namespace LambdaMapper
             _typeMappers.Clear();
 
             var consecutiveErrors = 0;
+            Type lastTypeError = null;
             while (_typeMapperExpressions.Any() && consecutiveErrors < 16)
             {
                 var typeFuncExpr = _typeMapperExpressions.First();
@@ -72,13 +69,14 @@ namespace LambdaMapper
                 {
                     _typeMapperExpressions.Remove(typeFuncExpr);
                     _typeMapperExpressions.Add(typeFuncExpr);
+                    lastTypeError = typeFuncExpr.type;
                     consecutiveErrors++;
                 }
             }
 
             if (consecutiveErrors > 0)
             {
-                throw new Exception("Missing mappers");
+                throw new Exception($"Missing mappers, last error was for type '{lastTypeError.Name}'");
             }
         }
 

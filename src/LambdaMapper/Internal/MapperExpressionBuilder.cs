@@ -42,10 +42,20 @@ namespace LambdaMapper.Internal
             }
             else
             {
+                var dest = Parameter(typeof(TDestination), "dest");
                 lambda = Lambda<Func<TSource, TDestination>>(
-                    MemberInit(
-                        New(typeof(TDestination)),
-                        bindings),
+                    Block(
+                        new [] { dest },
+                        IfThen(
+                            NotEqual(
+                                parameterExpression,
+                                Constant(null, typeof(TSource))),
+                            Assign(
+                                dest,
+                                MemberInit(
+                                    New(typeof(TDestination)),
+                                    bindings))),
+                        dest),
                     parameterExpression);
             }
 
@@ -77,19 +87,39 @@ namespace LambdaMapper.Internal
                 var ctorExpressions = bindings
                     .Where(b => parameterNames.Contains(b.Member.Name))
                     .Select(b => b.Expression);
+                var dest = Parameter(typeof(TDestination), "dest");
                 return Lambda<Func<TSource, TDestination>>(
-                    MemberInit(
-                        New(
-                            ctor,
-                            ctorExpressions),
-                        bindings),
+                    Block(
+                        new [] { dest },
+                        IfThen(
+                            NotEqual(
+                                parameterExpression,
+                                Constant(null, typeof(TSource))),
+                            Assign(
+                                dest,
+                                MemberInit(
+                                    New(
+                                        ctor,
+                                        ctorExpressions),
+                                    bindings))),
+                        dest),
                     parameterExpression);
             }
 
+            var destination = Parameter(typeof(TDestination), "destination");
             return Lambda<Func<TSource, TDestination>>(
-                New(
-                    ctor,
-                    GetConstructorArguments<TDestination>(bindings)),
+                Block(
+                    new [] { destination },
+                    IfThen(
+                        NotEqual(
+                            parameterExpression,
+                            Constant(null, typeof(TSource))),
+                        Assign(
+                            destination,
+                            New(
+                                ctor,
+                                GetConstructorArguments<TDestination>(bindings)))),
+                    destination),
                 parameterExpression);
         }
 
@@ -151,10 +181,20 @@ namespace LambdaMapper.Internal
             }
             else
             {
+                var dest = Parameter(typeof(T), "dest");
                 lambda = Lambda<Func<T, T>>(
-                    MemberInit(
-                        New(typeof(T)),
-                        bindings),
+                    Block(
+                        new [] { dest },
+                        IfThen(
+                            NotEqual(
+                                parameterExpression,
+                                Constant(null, typeof(T))),
+                            Assign(
+                                dest,
+                                MemberInit(
+                                    New(typeof(T)),
+                                    bindings))),
+                        dest),
                     parameterExpression);
             }
 
@@ -183,15 +223,35 @@ namespace LambdaMapper.Internal
                 var ctorExpressions = bindings
                     .Where(b => parameterNames.Contains(b.Member.Name))
                     .Select(b => b.Expression);
+                var dest = Parameter(typeof(T), "dest");
                 return Lambda<Func<T, T>>(
-                    MemberInit(
-                        New(ctor, ctorExpressions),
-                        bindings),
+                    Block(
+                        new [] { dest },
+                        IfThen(
+                            NotEqual(
+                                parameterExpression,
+                                Constant(null, typeof(T))),
+                            Assign(
+                                dest,
+                                MemberInit(
+                                    New(ctor, ctorExpressions),
+                                    bindings))),
+                        dest),
                     parameterExpression);
             }
 
+            var destination = Parameter(typeof(T), "destination");
             return Lambda<Func<T, T>>(
-                New(ctor, GetConstructorArguments<T>(bindings)),
+                Block(
+                    new [] { destination },
+                    IfThen(
+                        NotEqual(
+                            parameterExpression,
+                            Constant(null, typeof(T))),
+                        Assign(
+                            destination,
+                            New(ctor, GetConstructorArguments<T>(bindings)))),
+                    destination),
                 parameterExpression);
         }
 
@@ -260,7 +320,7 @@ namespace LambdaMapper.Internal
 
                     if (sourceChildProperty != null)
                     {
-                        return ExpressionNullableBind(
+                        return ExpressionBind(
                             Property(parameterExpression, sourceProperty),
                             sourceChildProperty,
                             destinationProperty,
@@ -341,7 +401,7 @@ namespace LambdaMapper.Internal
                             throw new Exception("mapper missing");
 
                         var dictionaryMapper = _typeMapperExpressions[sourceGenericTypeArguments[1]];
-                        return ExpressionNullableBind(
+                        return ExpressionBind(
                             Property(parameterExpression, sourceProperty),
                             sourceProperty,
                             destinationProperty,
@@ -358,7 +418,7 @@ namespace LambdaMapper.Internal
                         throw new Exception("mapper missing");
 
                     var collectionMapper = _typeMapperExpressions[sourceGenericTypeArgument];
-                    return ExpressionNullableBind(
+                    return ExpressionBind(
                         Property(parameterExpression, sourceProperty),
                         sourceProperty,
                         destinationProperty,
@@ -374,7 +434,7 @@ namespace LambdaMapper.Internal
             }
 
             var mapper = _typeMapperExpressions[sourceType];
-            return ExpressionNullableBind(
+            return ExpressionBind(
                 Property(parameterExpression, sourceProperty),
                 sourceProperty,
                 destinationProperty,
@@ -390,7 +450,9 @@ namespace LambdaMapper.Internal
             PropertyInfo sourceProperty,
             Type destinationType)
         {
-            if (sourceProperty.PropertyType.IsConstructedGenericType || sourceProperty.PropertyType.IsNested)
+            if ((sourceProperty.PropertyType.BaseType == null || !sourceProperty.PropertyType.BaseType.Equals(typeof(ValueType))) && 
+                sourceProperty.PropertyType.IsConstructedGenericType ||
+                sourceProperty.PropertyType.IsNested)
             {
                 if (!_typeClonerExpressions.ContainsKey(sourceProperty.PropertyType))
                 {
@@ -420,7 +482,7 @@ namespace LambdaMapper.Internal
                 if (sourceProperty.PropertyType.GetInterface(nameof(IDictionary)) != null)
                 {
                     var dictionaryCloner = _typeClonerExpressions[sourceProperty.PropertyType.GenericTypeArguments[1]];
-                    return ExpressionNullableBind(
+                    return ExpressionBind(
                         Property(parameterExpression, sourceProperty),
                         sourceProperty,
                         destinationProperty,
@@ -433,7 +495,7 @@ namespace LambdaMapper.Internal
                 }
 
                 var cloner = _typeClonerExpressions[sourceProperty.PropertyType];
-                return ExpressionNullableBind(
+                return ExpressionBind(
                     Property(parameterExpression, sourceProperty),
                     sourceProperty,
                     destinationProperty,
@@ -443,7 +505,7 @@ namespace LambdaMapper.Internal
                         Property(parameterExpression, sourceProperty)));
             }
 
-            return ExpressionNullableBind(
+            return ExpressionBind(
                 Property(parameterExpression, sourceProperty),
                 sourceProperty,
                 destinationProperty,
@@ -451,7 +513,7 @@ namespace LambdaMapper.Internal
                 Property(parameterExpression, sourceProperty));
         }
 
-        private static MemberAssignment ExpressionNullableBind(
+        private static MemberAssignment ExpressionBind(
             MemberExpression memberExpression,
             PropertyInfo sourceProperty,
             MemberInfo destinationProperty,
@@ -463,10 +525,13 @@ namespace LambdaMapper.Internal
                 return Bind(
                     destinationProperty,
                     Condition(
-                        NotEqual(memberExpression, Constant(null)),
+                        NotEqual(
+                            memberExpression,
+                            Constant(null, sourceProperty.PropertyType)),
                         bindingExpression,
-                        Constant(null, destinationType)));
+                        Constant(null, bindingExpression.Type)));
             }
+
             return Bind(
                 destinationProperty,
                 bindingExpression);

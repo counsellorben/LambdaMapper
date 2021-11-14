@@ -16,6 +16,6 @@ namespace System.Runtime.CompilerServices
 
         public NullableAttribute(byte mode) => Mode = mode;
 
-        public NullableAttribute(byte[] _) => throw new NotImplementedException();
+        public NullableAttribute(byte[] modes) => Mode = modes[0];
     }
 }

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using AutoMapper;
 using BenchmarkDotNet.Attributes;
-using FastExpressionCompiler;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Newtonsoft.Json.Serialization;
@@ -20,20 +19,20 @@ namespace LambdaMapper.Benchmarks
             {
                 cfg.CreateMap<Operation<SourceAddress>, Operation<DestinationAddress>>();
                 cfg.CreateMap<JsonPatchDocument<SourceAddress>, JsonPatchDocument<DestinationAddress>>();
-                cfg.CreateMap<SourceClass, DestinationClass>();
+                // cfg.CreateMap<SourceName, DestinationName>();
                 cfg.CreateMap<SourceAddress, DestinationAddress>();
                 cfg.CreateMap<SourceRole, DestinationRole>();
                 cfg.CreateMap<(SourceAddress, SourceAddress), (DestinationAddress, DestinationAddress)>();
-                cfg.CreateMap<SourceName, DestinationName>();
+                cfg.CreateMap<SourceClass, DestinationClass>();
             });
             _mapper = config.CreateMapper();
 
             LambdaMapper.CreateMap<Operation<SourceAddress>, Operation<DestinationAddress>>();
             LambdaMapper.CreateMap<JsonPatchDocument<SourceAddress>, JsonPatchDocument<DestinationAddress>>();
-            LambdaMapper.CreateMap<SourceClass, DestinationClass>();
+            // LambdaMapper.CreateMap<SourceName, DestinationName>();
             LambdaMapper.CreateMap<SourceAddress, DestinationAddress>();
             LambdaMapper.CreateMap<SourceRole, DestinationRole>();
-            LambdaMapper.CreateMap<SourceName, DestinationName>();
+            LambdaMapper.CreateMap<SourceClass, DestinationClass>();
             LambdaMapper.InstantiateMapper();
         }
 
@@ -131,7 +130,7 @@ namespace LambdaMapper.Benchmarks
                     }
                 ),
                 Created = DateTime.UtcNow,
-                FullName = new SourceName("Buckaroo", "Banzai"),
+                // FullName = new SourceName("Buckaroo", "Banzai"),
                 AddressChange = new JsonPatchDocument<SourceAddress>(
                     new List<Operation<SourceAddress>>
                     {
@@ -166,7 +165,7 @@ namespace LambdaMapper.Benchmarks
                     { 0, new SourceRole { RoleName = "Ruler of all" } }
                 },
                 Created = DateTime.UtcNow,
-                FullName = new SourceName("Buckaroo", "Banzai"),
+                // FullName = new SourceName("Buckaroo", "Banzai"),
                 AddressChange = new JsonPatchDocument<SourceAddress>(
                     new List<Operation<SourceAddress>>
                     {
@@ -185,14 +184,13 @@ namespace LambdaMapper.Benchmarks
             public Guid Id { get; set; }
             public string FirstName { get; set; }
             public string LastName { get; set; }
-            #nullable enable
-            public SourceAddress? PrimaryAddress { get; set; }
-            #nullable disable
+            // public SourceAddress? PrimaryAddress { get; set; }
+            public SourceAddress PrimaryAddress { get; set; }
             public IEnumerable<SourceAddress> Addresses { get; set; }
             public DateTime Created { get; set; }
             public Dictionary<int, SourceRole> Roles { get; set; }
             public (SourceAddress address1, SourceAddress address2) TupleAddresses { get; set; }
-            public SourceName FullName { get; init; }
+            // public SourceName FullName { get; init; }
             public JsonPatchDocument<SourceAddress> AddressChange { get; set; }
         }
 
@@ -202,9 +200,8 @@ namespace LambdaMapper.Benchmarks
             public string FirstName { get; set; }
             public string LastName { get; set; }
             // public SourceAddress? PrimaryAddress { get; set; }
-            #nullable enable
-            public DestinationAddress? PrimaryAddress { get; set; }
-            #nullable disable
+            // public DestinationAddress? PrimaryAddress { get; set; }
+            public DestinationAddress PrimaryAddress { get; set; }
             public IEnumerable<DestinationAddress> Addresses { get; set; }
 
             // public Dictionary<int, SourceRole> Roles { get; set; }
@@ -214,13 +211,13 @@ namespace LambdaMapper.Benchmarks
             public (DestinationAddress address1, DestinationAddress address2) TupleAddresses { get; set; }
 
             // public SourceName FullName { get; init; }
-            public DestinationName FullName { get; init; }
+            // public DestinationName FullName { get; init; }
             public JsonPatchDocument<DestinationAddress> AddressChange { get; set; }
         }
 
-        public record SourceName(string FirstName, string LastName) {};
+        // public record SourceName(string FirstName, string LastName) {};
 
-        public record DestinationName(string FirstName, string LastName) {};
+        // public record DestinationName(string FirstName, string LastName) {};
 
         public class SourceAddress
         {
