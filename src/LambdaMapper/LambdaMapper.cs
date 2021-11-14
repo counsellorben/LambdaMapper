@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using FastExpressionCompiler;
 using LambdaMapper.Internal;
 
 namespace LambdaMapper
@@ -59,7 +58,7 @@ namespace LambdaMapper
                 var typeFuncExpr = _typeMapperExpressions.First();
                 try
                 {
-                    var func = typeFuncExpr.expression.CompileFast();
+                    var func = typeFuncExpr.expression.Compile();
                     var result = func.DynamicInvoke();
                     _typeMappers.TryAdd(typeFuncExpr.type, result);
                     consecutiveErrors = 0;

@@ -8,7 +8,6 @@ using static System.Linq.Expressions.Expression;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using FastExpressionCompiler;
 
 namespace LambdaMapper.Internal
 {
@@ -60,7 +59,7 @@ namespace LambdaMapper.Internal
             }
 
             _typeMapperExpressions.TryAdd(typeof(TSource), lambda);
-            return lambda.CompileFast();
+            return lambda.Compile();
         }
 
         private static Expression<Func<TSource, TDestination>> CreateMapperForObjectWithoutParameterlessConstructor<TSource, TDestination>(
@@ -269,7 +268,7 @@ namespace LambdaMapper.Internal
                     {
                         genericTypeArgument,
                     }));
-            var action = actionExpression.CompileFast();
+            var action = actionExpression.Compile();
             action.DynamicInvoke();
         }
 
