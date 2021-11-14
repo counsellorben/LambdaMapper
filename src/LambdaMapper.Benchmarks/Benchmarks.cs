@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using AutoMapper;
 using BenchmarkDotNet.Attributes;
 using FastExpressionCompiler;
-using Mapster;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Newtonsoft.Json.Serialization;
@@ -13,7 +12,6 @@ namespace LambdaMapper.Benchmarks
     public class Benchmarks
     {
         private IMapper _mapper;
-        private TypeAdapterConfig _mapsterConfig;
 
         [GlobalSetup]
         public void Setup()
@@ -37,39 +35,7 @@ namespace LambdaMapper.Benchmarks
             LambdaMapper.CreateMap<SourceRole, DestinationRole>();
             LambdaMapper.CreateMap<SourceName, DestinationName>();
             LambdaMapper.InstantiateMapper();
-
-            TypeAdapterConfig.GlobalSettings.Compiler = exp => exp.CompileFast();
-            _mapsterConfig = new TypeAdapterConfig();
-            _mapsterConfig.NewConfig<SourceName, SourceName>()
-                .ConstructUsing(s => new SourceName(s.FirstName, s.LastName))
-                .IgnoreNullValues(true);
-            _mapsterConfig.NewConfig<SourceName, DestinationName>()
-                .ConstructUsing(s => new DestinationName(s.FirstName, s.LastName))
-                .IgnoreNullValues(true);
-            _mapsterConfig.NewConfig<IContractResolver, IContractResolver>()
-                .ConstructUsing(s => null)
-                .IgnoreNullValues(true);
-            _mapsterConfig.NewConfig<SourceAddress, DestinationAddress>()
-                .IgnoreNullValues(true);
-            _mapsterConfig.NewConfig<(SourceAddress, SourceAddress), (DestinationAddress, DestinationAddress)>()
-                .IgnoreNullValues(true);
-            var sourceClass = GetSourceClass();
-            var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
         }
-
-        // [Benchmark]
-        // public void Mapster()
-        // {
-        //     var sourceClass = GetSourceClass();
-        //     var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
-        // }
-
-        // [Benchmark]
-        // public void MapsterWithNull()
-        // {
-        //     var sourceClass = GetSourceClassWithNull();
-        //     var destinationClass = sourceClass.Adapt<DestinationClass>(_mapsterConfig);
-        // }
 
         [Benchmark]
         public void Automapper()

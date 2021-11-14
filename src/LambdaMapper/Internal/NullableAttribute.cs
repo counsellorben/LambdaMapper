@@ -14,10 +14,7 @@ namespace System.Runtime.CompilerServices
     {
         public byte Mode { get; }
 
-        public NullableAttribute(byte mode)
-        {
-            Mode = mode;
-        }
+        public NullableAttribute(byte mode) => Mode = mode;
 
         public NullableAttribute(byte[] _) => throw new NotImplementedException();
     }

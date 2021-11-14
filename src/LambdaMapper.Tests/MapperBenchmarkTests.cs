@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using AutoMapper;
-using HigLabo.Core;
-using Mapster;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Newtonsoft.Json.Serialization;
@@ -42,58 +40,6 @@ namespace LambdaMapper.Tests
 
             var sourceClass = GetSourceClass();
             var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
-            Assert.AreEqual(sourceClass.Id, destinationClass.Id);
-            Assert.AreEqual(sourceClass.FullName.LastName, destinationClass.FullName.LastName);
-            Assert.AreEqual(sourceClass.FirstName, destinationClass.FirstName);
-            Assert.AreEqual(sourceClass.PrimaryAddress.AddressLine, destinationClass.PrimaryAddress.AddressLine);
-            Assert.AreEqual(sourceClass.LastName, destinationClass.LastName);
-            Assert.AreEqual(sourceClass.Addresses.First().AddressLine, destinationClass.Addresses.First().AddressLine);
-            Assert.AreEqual(sourceClass.Roles.First().Value.RoleName, destinationClass.Roles.First().Value.RoleName);
-            Assert.AreEqual(
-                sourceClass.TupleAddresses.address1.AddressLine,
-                destinationClass.TupleAddresses.address1.AddressLine);
-            Assert.AreEqual(
-                sourceClass.AddressChange.Operations.First().value,
-                destinationClass.AddressChange.Operations.First().value);
-        }
-
-        [Test]
-        public void MapsterMapperTest()
-        {
-            var config = new TypeAdapterConfig();
-            config.NewConfig<SourceName, SourceName>()
-                .ConstructUsing(s => new SourceName(s.FirstName, s.LastName))
-                .IgnoreNullValues(true);
-            config.NewConfig<SourceName, DestinationName>()
-                .ConstructUsing(s => new DestinationName(s.FirstName, s.LastName))
-                .IgnoreNullValues(true);
-            config.NewConfig<IContractResolver, IContractResolver>()
-                .ConstructUsing(s => s)
-                .IgnoreNullValues(true);
-            config.NewConfig<SourceAddress, DestinationAddress>()
-                .IgnoreNullValues(true);
-            config.NewConfig<(SourceAddress, SourceAddress), (DestinationAddress, DestinationAddress)>()
-                .IgnoreNullValues(true);
-            config.Compile();
-
-            var sourceClassWithNull = GetSourceClassWithNull();
-            var destinationClassWithNull = sourceClassWithNull.Adapt<DestinationClass>(config);
-            Assert.AreEqual(sourceClassWithNull.Id, destinationClassWithNull.Id);
-            Assert.AreEqual(sourceClassWithNull.FullName.LastName, destinationClassWithNull.FullName.LastName);
-            Assert.AreEqual(sourceClassWithNull.FirstName, destinationClassWithNull.FirstName);
-            Assert.IsNull(sourceClassWithNull.PrimaryAddress);
-            Assert.IsNull(destinationClassWithNull.PrimaryAddress);
-            Assert.AreEqual(sourceClassWithNull.LastName, destinationClassWithNull.LastName);
-            Assert.AreEqual(sourceClassWithNull.Addresses.First().AddressLine, destinationClassWithNull.Addresses.First().AddressLine);
-            Assert.AreEqual(
-                sourceClassWithNull.Roles.First().Value.RoleName,
-                destinationClassWithNull.Roles.First().Value.RoleName);
-            Assert.AreEqual(
-                sourceClassWithNull.AddressChange.Operations.First().value,
-                destinationClassWithNull.AddressChange.Operations.First().value);
-
-            var sourceClass = GetSourceClass();
-            var destinationClass = sourceClass.Adapt<DestinationClass>(config);
             Assert.AreEqual(sourceClass.Id, destinationClass.Id);
             Assert.AreEqual(sourceClass.FullName.LastName, destinationClass.FullName.LastName);
             Assert.AreEqual(sourceClass.FirstName, destinationClass.FirstName);
