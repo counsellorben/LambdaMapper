@@ -16,10 +16,7 @@ namespace LambdaMapper.Internal
         internal static ConcurrentDictionary<Type, LambdaExpression> _typeMapperExpressions =
             new ConcurrentDictionary<Type, LambdaExpression>();
 
-        internal static ConcurrentDictionary<Type, LambdaExpression> _typeClonerExpressions =
-            new ConcurrentDictionary<Type, LambdaExpression>();
-
-        public static Func<TSource, TDestination> CreateMapper<TSource, TDestination>()
+        internal static Func<TSource, TDestination> CreateMapper<TSource, TDestination>()
             where TSource : class
             where TDestination : class
         {
@@ -45,15 +42,16 @@ namespace LambdaMapper.Internal
                 lambda = Lambda<Func<TSource, TDestination>>(
                     Block(
                         new [] { dest },
-                        IfThen(
-                            NotEqual(
-                                parameterExpression,
-                                Constant(null, typeof(TSource))),
-                            Assign(
-                                dest,
+                        Assign(
+                            dest,
+                            Condition(
+                                NotEqual(
+                                    parameterExpression,
+                                    Constant(null, typeof(TSource))),
                                 MemberInit(
                                     New(typeof(TDestination)),
-                                    bindings))),
+                                    bindings),
+                                Constant(null, typeof(TDestination)))),
                         dest),
                     parameterExpression);
             }
@@ -90,17 +88,18 @@ namespace LambdaMapper.Internal
                 return Lambda<Func<TSource, TDestination>>(
                     Block(
                         new [] { dest },
-                        IfThen(
-                            NotEqual(
-                                parameterExpression,
-                                Constant(null, typeof(TSource))),
-                            Assign(
-                                dest,
+                        Assign(
+                            dest,
+                            Condition(
+                                NotEqual(
+                                    parameterExpression,
+                                    Constant(null, typeof(TSource))),
                                 MemberInit(
                                     New(
                                         ctor,
                                         ctorExpressions),
-                                    bindings))),
+                                    bindings),
+                                Constant(null, typeof(TDestination)))),
                         dest),
                     parameterExpression);
             }
@@ -109,15 +108,16 @@ namespace LambdaMapper.Internal
             return Lambda<Func<TSource, TDestination>>(
                 Block(
                     new [] { destination },
-                    IfThen(
-                        NotEqual(
-                            parameterExpression,
-                            Constant(null, typeof(TSource))),
-                        Assign(
-                            destination,
+                    Assign(
+                        destination,
+                        Condition(
+                            NotEqual(
+                                parameterExpression,
+                                Constant(null, typeof(TSource))),
                             New(
                                 ctor,
-                                GetConstructorArguments<TDestination>(bindings)))),
+                                GetConstructorArguments<TDestination>(bindings)),
+                            Constant(null, typeof(TDestination)))),
                     destination),
                 parameterExpression);
         }
@@ -140,139 +140,11 @@ namespace LambdaMapper.Internal
             return (Expression<Func<TSource, TDestination>>)GetMapperExpression(source, destination);
         }
 
-        public static void CreateCloner<T>()
-        {
-
-            if (typeof(T).IsValueType)
-            {
-                foreach (var genericTypeArgument in typeof(T).GenericTypeArguments)
-                {
-                    if (!_typeClonerExpressions.ContainsKey(genericTypeArgument))
-                    {
-                        AddTypeCloner(genericTypeArgument);
-                    }
-                }
-            }
-
-            if (typeof(T).GetInterface(nameof(IDictionary)) != null)
-            {
-                var itemType = typeof(T).GenericTypeArguments[1];
-                if (!_typeClonerExpressions.ContainsKey(itemType))
-                {
-                    AddTypeCloner(itemType);
-                }
-                return;
-            }
-
-            var sourceProperties = typeof(T).GetProperties().Where(dest => dest.CanWrite);
-            var parameterExpression = Parameter(typeof(T), "src");
-            var bindings = typeof(T)
-                .GetProperties()
-                .Where(p => p.CanWrite)
-                .Select(p =>
-                    BuildBinding(parameterExpression, p, sourceProperties))
-                .Where(binding => binding != null);
-
-            Expression<Func<T, T>> lambda;
-            if (typeof(T).GetConstructor(Type.EmptyTypes) == null)
-            {
-                lambda = CreateClonerForObjectWithoutParameterlessConstructor<T>(parameterExpression, bindings);
-            }
-            else
-            {
-                var dest = Parameter(typeof(T), "dest");
-                lambda = Lambda<Func<T, T>>(
-                    Block(
-                        new [] { dest },
-                        IfThen(
-                            NotEqual(
-                                parameterExpression,
-                                Constant(null, typeof(T))),
-                            Assign(
-                                dest,
-                                MemberInit(
-                                    New(typeof(T)),
-                                    bindings))),
-                        dest),
-                    parameterExpression);
-            }
-
-            _typeClonerExpressions.TryAdd(typeof(T), lambda);
-        }
-
-        private static Expression<Func<T, T>> CreateClonerForObjectWithoutParameterlessConstructor<T>(
-            ParameterExpression parameterExpression,
-            IEnumerable<MemberAssignment> bindings)
-        {
-            var propertyTypes = typeof(T)
-                .GetProperties()
-                .Where(p => p.CanWrite)
-                .Select(p => p.PropertyType)
-                .ToArray();
-            var ctor = typeof(T).GetConstructors()
-                .SingleOrDefault(c => c.GetParameters().Length == propertyTypes.Length);
-
-            if (ctor == null)
-            {
-                // number of properties and number of ctor parameters not aligned,
-                // get default ctor and give it the expected objects,
-                // then MemberInit the instantiated object
-                ctor = typeof(T).GetConstructors().First();
-                var parameterNames = ctor.GetParameters().Select(p => p.Name);
-                var ctorExpressions = bindings
-                    .Where(b => parameterNames.Contains(b.Member.Name))
-                    .Select(b => b.Expression);
-                var dest = Parameter(typeof(T), "dest");
-                return Lambda<Func<T, T>>(
-                    Block(
-                        new [] { dest },
-                        IfThen(
-                            NotEqual(
-                                parameterExpression,
-                                Constant(null, typeof(T))),
-                            Assign(
-                                dest,
-                                MemberInit(
-                                    New(ctor, ctorExpressions),
-                                    bindings))),
-                        dest),
-                    parameterExpression);
-            }
-
-            var destination = Parameter(typeof(T), "destination");
-            return Lambda<Func<T, T>>(
-                Block(
-                    new [] { destination },
-                    IfThen(
-                        NotEqual(
-                            parameterExpression,
-                            Constant(null, typeof(T))),
-                        Assign(
-                            destination,
-                            New(ctor, GetConstructorArguments<T>(bindings)))),
-                    destination),
-                parameterExpression);
-        }
-
-        private static IEnumerable<Expression> GetConstructorArguments<T>(
+        internal static IEnumerable<Expression> GetConstructorArguments<T>(
             IEnumerable<MemberAssignment> bindings) =>
             bindings.Select(b => b.Expression);
 
-        private static void AddTypeCloner(Type genericTypeArgument)
-        {
-            var actionExpression = Lambda<Action>(
-                Call(
-                    typeof(MapperExpressionBuilder),
-                    nameof(MapperExpressionBuilder.CreateCloner),
-                    new[]
-                    {
-                        genericTypeArgument,
-                    }));
-            var action = actionExpression.Compile();
-            action.DynamicInvoke();
-        }
-
-        private static MemberAssignment BuildBinding(
+        internal static MemberAssignment BuildBinding(
             Expression parameterExpression,
             MemberInfo destinationProperty,
             IEnumerable<PropertyInfo> sourceProperties)
@@ -286,7 +158,7 @@ namespace LambdaMapper.Internal
 
             if (sourceProperty != null)
             {
-                return BuildClonerBinding(
+                return ClonerExpressionBuilder.BuildClonerBinding(
                     parameterExpression,
                     destinationProperty,
                     sourceProperty,
@@ -366,20 +238,17 @@ namespace LambdaMapper.Internal
                         }
                         else
                         {
-                            if (!_typeClonerExpressions.ContainsKey(sourceGenericType))
-                            {
-                                AddTypeCloner(sourceProperty.PropertyType);
-                            }
                             valueTypeMappers.Add(
                                 Quote(
-                                    _typeClonerExpressions
-                                        .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value));
+                                    ClonerExpressionBuilder.GetTypeCloner(
+                                        sourceGenericType,
+                                        sourceProperty.PropertyType)));
                         }
                         counter++;
                     }
                     return Bind(
                         destinationProperty,
-                        MapperExpressionHelpers.MapEachValueType(
+                        MapEachTupleValueType.Execute(
                             sourceProperty.PropertyType,
                             ((PropertyInfo)destinationProperty).PropertyType,
                             Property(parameterExpression, sourceProperty),
@@ -405,7 +274,7 @@ namespace LambdaMapper.Internal
                             sourceProperty,
                             destinationProperty,
                             destinationType,
-                            MapperExpressionHelpers.MapEachIDictionary(
+                            MapEachIDictionary.Execute(
                                 sourceType,
                                 destinationType,
                                 source,
@@ -422,7 +291,7 @@ namespace LambdaMapper.Internal
                         sourceProperty,
                         destinationProperty,
                         destinationType,
-                        MapperExpressionHelpers.MapEachIEnumerable(
+                        MapEachIEnumerable.Execute(
                             sourceType,
                             destinationType,
                             source,
@@ -443,76 +312,7 @@ namespace LambdaMapper.Internal
                     Property(parameterExpression, sourceProperty)));
         }
 
-        private static MemberAssignment BuildClonerBinding(
-            Expression parameterExpression,
-            MemberInfo destinationProperty,
-            PropertyInfo sourceProperty,
-            Type destinationType)
-        {
-            if ((sourceProperty.PropertyType.BaseType == null || !sourceProperty.PropertyType.BaseType.Equals(typeof(ValueType))) && 
-                sourceProperty.PropertyType.IsConstructedGenericType ||
-                sourceProperty.PropertyType.IsNested)
-            {
-                if (!_typeClonerExpressions.ContainsKey(sourceProperty.PropertyType))
-                {
-                    AddTypeCloner(sourceProperty.PropertyType);
-                }
-
-                if (sourceProperty.PropertyType.IsValueType)
-                {
-                    var genericTypes = sourceProperty.PropertyType.GenericTypeArguments;
-                    var valueTypeCloners = new List<UnaryExpression>();
-                    foreach (var genericType in genericTypes)
-                    {
-                        valueTypeCloners.Add(
-                            Quote(
-                                _typeClonerExpressions
-                                    .Single(kvp => genericTypes.Contains(kvp.Key)).Value));
-                    }
-                    return Bind(
-                        destinationProperty,
-                        MapperExpressionHelpers.MapEachValueType(
-                            sourceProperty.PropertyType,
-                            ((PropertyInfo)destinationProperty).PropertyType,
-                            Property(parameterExpression, sourceProperty),
-                            valueTypeCloners));
-                }
-
-                if (sourceProperty.PropertyType.GetInterface(nameof(IDictionary)) != null)
-                {
-                    var dictionaryCloner = _typeClonerExpressions[sourceProperty.PropertyType.GenericTypeArguments[1]];
-                    return ExpressionBind(
-                        Property(parameterExpression, sourceProperty),
-                        sourceProperty,
-                        destinationProperty,
-                        destinationType,
-                        MapperExpressionHelpers.MapEachIDictionary(
-                            sourceProperty.PropertyType,
-                            ((PropertyInfo)destinationProperty).PropertyType,
-                            Property(parameterExpression, sourceProperty),
-                            Quote(dictionaryCloner)));
-                }
-
-                var cloner = _typeClonerExpressions[sourceProperty.PropertyType];
-                return ExpressionBind(
-                    Property(parameterExpression, sourceProperty),
-                    sourceProperty,
-                    destinationProperty,
-                    destinationType,
-                    Invoke(
-                        Quote(cloner),
-                        Property(parameterExpression, sourceProperty)));
-            }
-
-            return ExpressionBind(
-                Property(parameterExpression, sourceProperty),
-                sourceProperty,
-                destinationProperty,
-                destinationType,
-                Property(parameterExpression, sourceProperty));
-        }
-
-        private static MemberAssignment ExpressionBind(
+        internal static MemberAssignment ExpressionBind(
             MemberExpression memberExpression,
             PropertyInfo sourceProperty,
             MemberInfo destinationProperty,

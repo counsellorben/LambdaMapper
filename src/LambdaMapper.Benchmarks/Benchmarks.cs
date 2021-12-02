@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using AutoMapper;
 using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Diagnostics.Windows.Configs;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Newtonsoft.Json.Serialization;
 
 namespace LambdaMapper.Benchmarks
 {
+    [MemoryDiagnoser]
     public class Benchmarks
     {
         private IMapper _mapper;
@@ -81,6 +83,21 @@ namespace LambdaMapper.Benchmarks
                 {
                     new SourceAddress
                     {
+                        AddressLine = "121 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    },
+                    new SourceAddress
+                    {
+                        AddressLine = "122 Main Street",
+                        AddressLine2 = "#2B",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    },
+                    new SourceAddress
+                    {
                         AddressLine = "123 Main Street",
                         City = "Peoria",
                         State = "Illinois",
@@ -89,7 +106,6 @@ namespace LambdaMapper.Benchmarks
                     new SourceAddress
                     {
                         AddressLine = "124 Main Street",
-                        AddressLine2 = "#2B",
                         City = "Peoria",
                         State = "Illinois",
                         PostalCode = "61525"
@@ -107,7 +123,35 @@ namespace LambdaMapper.Benchmarks
                         City = "Peoria",
                         State = "Illinois",
                         PostalCode = "61525"
-                    }
+                    },
+                    new SourceAddress
+                    {
+                        AddressLine = "127 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    },
+                    new SourceAddress
+                    {
+                        AddressLine = "128 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    },
+                    new SourceAddress
+                    {
+                        AddressLine = "129 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    },
+                    new SourceAddress
+                    {
+                        AddressLine = "130 Main Street",
+                        City = "Peoria",
+                        State = "Illinois",
+                        PostalCode = "61525"
+                    },
                 },
                 Roles = new Dictionary<int, SourceRole>
                 {

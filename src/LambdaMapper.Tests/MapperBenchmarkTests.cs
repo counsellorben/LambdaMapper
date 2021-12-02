@@ -31,9 +31,9 @@ namespace LambdaMapper.Tests
             Assert.IsNull(destinationClassWithNull.PrimaryAddress);
             Assert.AreEqual(sourceClassWithNull.LastName, destinationClassWithNull.LastName);
             // Assert.AreEqual(sourceClassWithNull.Addresses.First().AddressLine, destinationClassWithNull.Addresses.First().AddressLine);
-            Assert.AreEqual(
-                sourceClassWithNull.Roles.First().Value.RoleName,
-                destinationClassWithNull.Roles.First().Value.RoleName);
+            // Assert.AreEqual(
+            //     sourceClassWithNull.Roles.First().Value.RoleName,
+            //     destinationClassWithNull.Roles.First().Value.RoleName);
             // Assert.AreEqual(
             //     sourceClassWithNull.AddressChange.Operations.First().value,
             //     destinationClassWithNull.AddressChange.Operations.First().value);
@@ -192,10 +192,10 @@ namespace LambdaMapper.Tests
                 //         PostalCode = "61525"
                 //     }
                 // },
-                Roles = new Dictionary<int, SourceRole>
-                {
-                    { 0, new SourceRole { RoleName = "Ruler of all" } }
-                },
+                // Roles = new Dictionary<int, SourceRole>
+                // {
+                //     { 0, new SourceRole { RoleName = "Ruler of all" } }
+                // },
                 Created = DateTime.UtcNow,
                 // FullName = new SourceName("Buckaroo", "Banzai") { MiddleName = "Alan" },
                 // AddressChange = new JsonPatchDocument<SourceAddress>(

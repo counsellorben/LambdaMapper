@@ -3,19 +3,29 @@ namespace System.Runtime.CompilerServices
     /*
         NullableAttribute cannot be used in code unless a stub implementation
         of it is included.
-        Implementation adapted from http://code.fitness/post/2019/02/nullableattribute.html
+        Implementation taken from https://github.com/dotnet/roslyn/blob/main/docs/features/nullable-metadata.md
     */
 
-    [AttributeUsage (AttributeTargets.Class | AttributeTargets.Event | AttributeTargets.Field |
-                     AttributeTargets.GenericParameter | AttributeTargets.Module | AttributeTargets.Parameter |
-                     AttributeTargets.Property | AttributeTargets.ReturnValue,
-                     AllowMultiple = false)]
-    public class NullableAttribute : Attribute
+    [AttributeUsage(
+        AttributeTargets.Class |
+        AttributeTargets.Event |
+        AttributeTargets.Field |
+        AttributeTargets.GenericParameter |
+        AttributeTargets.Parameter |
+        AttributeTargets.Property |
+        AttributeTargets.ReturnValue,
+        AllowMultiple = false,
+        Inherited = false)]
+    public sealed class NullableAttribute : Attribute
     {
-        public byte Mode { get; }
-
-        public NullableAttribute(byte mode) => Mode = mode;
-
-        public NullableAttribute(byte[] modes) => Mode = modes[0];
+        public readonly byte[] NullableFlags;
+        public NullableAttribute(byte flag)
+        {
+            NullableFlags = new byte[] { flag };
+        }
+        public NullableAttribute(byte[] flags)
+        {
+            NullableFlags = flags;
+        }
     }
 }
