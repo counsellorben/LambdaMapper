@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using static System.Linq.Expressions.Expression;
@@ -223,36 +224,117 @@ namespace LambdaMapper.Internal
             {
                 if (sourceProperty.PropertyType.IsValueType)
                 {
+                    var sourceNamesAttribute = sourceProperty.CustomAttributes
+                        .SingleOrDefault(a => a.AttributeType.Equals(typeof(TupleElementNamesAttribute)));
+                    var destinationNamesAttribute = destinationProperty.CustomAttributes
+                        .SingleOrDefault(a => a.AttributeType.Equals(typeof(TupleElementNamesAttribute)));
+
                     var sourceGenericTypes = sourceProperty.PropertyType.GenericTypeArguments;
                     var destinationGenericTypes = ((PropertyInfo)destinationProperty).PropertyType.GenericTypeArguments;
-                    var valueTypeMappers = new List<UnaryExpression>();
-                    var counter = 0;
-                    foreach (var sourceGenericType in sourceGenericTypes)
+                    var destinationGenericTypeCount = destinationGenericTypes.Length;
+                    var sourceCounter = 0;
+                    var valueTypeMaps = new List<(UnaryExpression mapper, int sourceIndex, int destinationIndex)>();
+
+                    if (sourceNamesAttribute == null || destinationNamesAttribute == null)
                     {
-                        if (sourceGenericType != destinationGenericTypes[counter])
+                        foreach (var sourceGenericType in sourceGenericTypes)
                         {
-                            valueTypeMappers.Add(
-                                Quote(
-                                    _typeMapperExpressions
-                                        .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value));
+                            var destinationCounter = 0;
+                            var noMatch = true;
+                            while (noMatch && destinationCounter < destinationGenericTypeCount)
+                            {
+                                if (valueTypeMaps.Any(m => m.destinationIndex == destinationCounter))
+                                    continue;
+
+                                if (sourceGenericType == destinationGenericTypes[destinationCounter])
+                                {
+                                    valueTypeMaps.Add(
+                                        (Quote(
+                                            ClonerExpressionBuilder.GetTypeCloner(
+                                                sourceGenericType,
+                                                sourceProperty.PropertyType)),
+                                        sourceCounter,
+                                        destinationCounter));
+                                    noMatch = false;
+                                }
+                                else if (_typeMapperExpressions.Any(kvp => kvp.Key == sourceGenericType))
+                                {
+                                    valueTypeMaps.Add(
+                                        (Quote(
+                                            _typeMapperExpressions
+                                                .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value),
+                                        sourceCounter,
+                                        destinationCounter));
+                                    noMatch = false;
+                                }
+
+                                destinationCounter++;
+                            }
+
+                            sourceCounter++;
                         }
-                        else
-                        {
-                            valueTypeMappers.Add(
-                                Quote(
-                                    ClonerExpressionBuilder.GetTypeCloner(
-                                        sourceGenericType,
-                                        sourceProperty.PropertyType)));
-                        }
-                        counter++;
+
+                        return Bind(
+                            destinationProperty,
+                            MapEachTupleValueType.Execute(
+                                sourceProperty.PropertyType,
+                                ((PropertyInfo)destinationProperty).PropertyType,
+                                Property(parameterExpression, sourceProperty),
+                                valueTypeMaps));
                     }
-                    return Bind(
-                        destinationProperty,
-                        MapEachTupleValueType.Execute(
-                            sourceProperty.PropertyType,
-                            ((PropertyInfo)destinationProperty).PropertyType,
-                            Property(parameterExpression, sourceProperty),
-                            valueTypeMappers));
+                    else
+                    {
+                        var sourceNames = ((ReadOnlyCollection<CustomAttributeTypedArgument>)sourceNamesAttribute
+                            .ConstructorArguments
+                            .First()
+                            .Value)
+                                .Select(a => a.Value.ToString())
+                                .ToList();
+                        var destinationNames = ((ReadOnlyCollection<CustomAttributeTypedArgument>)destinationNamesAttribute
+                            .ConstructorArguments
+                            .First()
+                            .Value)
+                                .Select(a => a.Value.ToString())
+                                .ToList();
+                        foreach (var sourceName in sourceNames)
+                        {
+                            if (!destinationNames.Contains(sourceName))
+                                continue;
+
+                            var destinationCounter = destinationNames.IndexOf(sourceName);
+                            var sourceGenericType = sourceGenericTypes[sourceCounter];
+
+                            if (sourceGenericType == destinationGenericTypes[destinationCounter])
+                            {
+                                valueTypeMaps.Add(
+                                    (Quote(
+                                        ClonerExpressionBuilder.GetTypeCloner(
+                                            sourceGenericType,
+                                            sourceProperty.PropertyType)),
+                                    sourceCounter,
+                                    destinationCounter));
+                            }
+                            else
+                            {
+                                valueTypeMaps.Add(
+                                    (Quote(
+                                        _typeMapperExpressions
+                                            .Single(kvp => sourceGenericTypes.Contains(kvp.Key)).Value),
+                                    sourceCounter,
+                                    destinationCounter));
+                            }
+
+                            sourceCounter++;
+                        }
+
+                        return Bind(
+                            destinationProperty,
+                            MapEachTupleValueType.Execute(
+                                sourceProperty.PropertyType,
+                                ((PropertyInfo)destinationProperty).PropertyType,
+                                Property(parameterExpression, sourceProperty),
+                                valueTypeMaps));
+                    }
                 }
 
                 if (sourceProperty.PropertyType.IsConstructedGenericType)

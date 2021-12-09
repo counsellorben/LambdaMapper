@@ -174,14 +174,19 @@ namespace LambdaMapper.Internal
                 if (sourceProperty.PropertyType.IsValueType)
                 {
                     var genericTypes = sourceProperty.PropertyType.GenericTypeArguments;
-                    var valueTypeCloners = new List<UnaryExpression>();
+                    var valueTypeCloners = new List<(UnaryExpression mappers, int sourceIndex, int destinationIndex)>();
+                    var index = 0;
                     foreach (var genericType in genericTypes)
                     {
                         valueTypeCloners.Add(
-                            Quote(
+                            (Quote(
                                 _typeClonerExpressions
-                                    .Single(kvp => genericTypes.Contains(kvp.Key)).Value));
+                                    .Single(kvp => genericTypes.Contains(kvp.Key)).Value),
+                            index,
+                            index));
+                        index++;
                     }
+
                     return Bind(
                         destinationProperty,
                         MapEachTupleValueType.Execute(

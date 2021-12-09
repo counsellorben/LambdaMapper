@@ -15,8 +15,6 @@ namespace LambdaMapper.Internal
             Expression source,
             UnaryExpression mapper)
         {
-            var counter = Variable(typeof(int), "counter");
-            var length = Variable(typeof(int), "length");
             var underlyingSourceType = sourceType.GenericTypeArguments.First();
             var underlyingDestinationType = destinationType.GenericTypeArguments.First();
             var listType = typeof(List<>)
@@ -24,30 +22,24 @@ namespace LambdaMapper.Internal
             var destination = Variable(
                 listType,
                 "dest");
-            var element = Parameter(underlyingSourceType, "element");
             var getEnumerator = sourceType.GetMethod(nameof(IEnumerable.GetEnumerator));
             if (getEnumerator is null)
                 getEnumerator = typeof(IEnumerable<>)
-                    .MakeGenericType(sourceType)
+                    .MakeGenericType(underlyingSourceType)
                     .GetMethod(nameof(IEnumerable.GetEnumerator));
             var enumeratorType = getEnumerator.ReturnType;
             var enumerator = Variable(enumeratorType, "enumerator");
             var resetMethod = typeof(IEnumerator).GetMethod(nameof(IEnumerator.Reset));
             var isList = !(enumeratorType.DeclaringType is null);
-            var count = typeof(EnumerationHelpers)
-                .GetMethod(nameof(EnumerationHelpers.Count));
             var asEnumerable = typeof(Enumerable)
                 .GetMethod(nameof(Enumerable.AsEnumerable))
-                .MakeGenericMethod(destinationType.GenericTypeArguments[0]);
+                .MakeGenericMethod(underlyingDestinationType);
 
             var addMethod = listType.GetMethod(nameof(List<object>.Add));
             Expression returnExpression = Call(asEnumerable, destination);
 
             if (isList)
             {
-                count = typeof(EnumerationHelpers)
-                    .GetMethod(nameof(EnumerationHelpers.ListCount))
-                    .MakeGenericMethod(sourceType.GenericTypeArguments);
                 returnExpression = destination;
             }
 
@@ -64,16 +56,14 @@ namespace LambdaMapper.Internal
                         EnumerationHelpers.EnumerationLoop(
                             enumerator,
                             Block(
-                                new[] { element },
-                                Assign(element, Property(
-                                    enumerator,
-                                    nameof(IEnumerator.Current))),
                                 Call(
                                     destination,
                                     addMethod,
                                     new [] { Invoke(
                                         mapper,
-                                        element)}))))),
+                                        Property(
+                                            enumerator,
+                                            nameof(IEnumerator.Current)))}))))),
                 returnExpression);
         }
     }

@@ -13,7 +13,7 @@ namespace LambdaMapper.Internal
             Type sourceType,
             Type destinationType,
             Expression source,
-            IEnumerable<UnaryExpression> mappers)
+            IEnumerable<(UnaryExpression mapper, int sourceIndex, int destinationIndex)> maps)
         {
             var sourceTypeArguments = sourceType.GenericTypeArguments;
             var destinationTypeArguments = destinationType.GenericTypeArguments;
@@ -30,10 +30,15 @@ namespace LambdaMapper.Internal
             var destinationItemParameters = new List<ParameterExpression>();
             for (var i = 0; i < sourceTypeArguments.Length; i++)
             {
-                var mapper = mappers.ElementAt(i);
+                var map = maps.SingleOrDefault(m => m.sourceIndex == i);
+
+                if (map!.mapper == null)
+                    continue;
+
+                var mapper = map.mapper;
                 var sourceItemParameter = Parameter(sourceTypeArguments[i], $"sourceItem{i}");
                 sourceItemParameters.Add(sourceItemParameter);
-                var destinationItemParameter = Parameter(destinationTypeArguments[i], $"destinationItem{i}");
+                var destinationItemParameter = Parameter(destinationTypeArguments[map.destinationIndex], $"destinationItem{i}");
                 destinationItemParameters.Add(destinationItemParameter);
                 expressions.AddRange( new Expression []
                 {
