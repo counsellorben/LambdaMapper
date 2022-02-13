@@ -61,12 +61,54 @@ namespace LambdaMapper.Internal
             return lambda.Compile();
         }
 
+        internal static Func<TSource, TDestination> CreateEnumMapper<TSource, TDestination>()
+            where TSource : struct, IConvertible
+            where TDestination : struct, IConvertible
+        {
+            var sourceProperties = typeof(TSource).GetProperties();
+            var destinationProperties = typeof(TDestination).GetProperties().Where(dest => dest.CanWrite);
+            var parameterExpression = Parameter(typeof(TSource), "src");
+
+            var bindings = destinationProperties
+                .Select(destinationProperty =>
+                    BuildBinding(parameterExpression, destinationProperty, sourceProperties))
+                .Where(binding => binding != null);
+
+            var lambda = CreateMapperForObjectWithoutParameterlessConstructor<TSource, TDestination>(
+                    parameterExpression,
+                    bindings);
+            _typeMapperExpressions.TryAdd(typeof(TSource), lambda);
+            return lambda.Compile();
+        }
+
         private static Expression<Func<TSource, TDestination>> CreateMapperForObjectWithoutParameterlessConstructor<TSource, TDestination>(
             ParameterExpression parameterExpression,
             IEnumerable<MemberAssignment> bindings)
-            where TSource : class
-            where TDestination : class
         {
+            var dest = Parameter(typeof(TDestination), "dest");
+            if (typeof(TDestination).IsEnum)
+            {
+                var toString = typeof(ValueType)
+                    .GetMethod(nameof(ValueType.ToString));
+                var enumString = Parameter(typeof(string), "enumString");
+
+                return Lambda<Func<TSource, TDestination>>(
+                    Block(
+                        new [] { enumString, dest },
+                        Assign(
+                            enumString,
+                            Call(parameterExpression, toString)),
+                        Assign(
+                            dest,
+                            Call(
+                                typeof(MapEnums),
+                                nameof(MapEnums.MapEnum),
+                                new [] { typeof(TDestination) },
+                                new [] { enumString })),
+                        dest),
+                    parameterExpression);
+            }
+
             var propertyTypes = typeof(TDestination)
                 .GetProperties()
                 .Where(p => p.CanWrite)
@@ -85,7 +127,6 @@ namespace LambdaMapper.Internal
                 var ctorExpressions = bindings
                     .Where(b => parameterNames.Contains(b.Member.Name))
                     .Select(b => b.Expression);
-                var dest = Parameter(typeof(TDestination), "dest");
                 return Lambda<Func<TSource, TDestination>>(
                     Block(
                         new [] { dest },

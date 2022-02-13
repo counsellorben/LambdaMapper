@@ -17,11 +17,11 @@ var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sou
 ```
 
 ### Benchmarks
-Much to my surprise, `LambdaMapper` outperforms `AutoMapper`, despite the fact that `LambdaMapper` is creating clones of any objects in the source object graph which are of the same type, while `AutoMapper` merely uses the same object in the newly created object graph.
+Using v.10 of `AutoMapper`, `LambdaMapper` had outperformed `AutoMapper`. After upgrading `AutoMapper` to v.11, `LambdaMapper` no longer outperforms `AutoMapper`.
 
-|               Method |     Mean |     Error |    StdDev |
-|--------------------- |---------:|----------:|----------:|
-|           Automapper | 2.483 us | 0.0182 us | 0.0170 us |
-|         LambdaMapper | 1.770 us | 0.0116 us | 0.0108 us |
-|   AutomapperWithNull | 1.241 us | 0.0112 us | 0.0105 us |
-| LambdaMapperWithNull | 1.075 us | 0.0119 us | 0.0112 us |
+|               Method |     Mean |     Error |    StdDev |  Gen 0 | Allocated |
+|--------------------- |---------:|----------:|----------:|-------:|----------:|
+|           Automapper | 1.879 us | 0.0225 us | 0.0221 us | 2.1725 |      4 KB |
+|         LambdaMapper | 1.984 us | 0.0354 us | 0.0314 us | 2.6169 |      5 KB |
+|   AutomapperWithNull | 1.049 us | 0.0191 us | 0.0178 us | 1.1463 |      2 KB |
+| LambdaMapperWithNull | 1.228 us | 0.0142 us | 0.0133 us | 1.6518 |      3 KB |

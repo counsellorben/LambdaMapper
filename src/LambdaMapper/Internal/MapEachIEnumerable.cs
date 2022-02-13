@@ -18,7 +18,7 @@ namespace LambdaMapper.Internal
             var underlyingSourceType = sourceType.GenericTypeArguments.First();
             var underlyingDestinationType = destinationType.GenericTypeArguments.First();
             var listType = typeof(List<>)
-                .MakeGenericType(destinationType.GenericTypeArguments);
+                .MakeGenericType(underlyingDestinationType);
             var destination = Variable(
                 listType,
                 "dest");

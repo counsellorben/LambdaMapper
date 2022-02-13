@@ -90,6 +90,19 @@ namespace LambdaMapper.Internal
             ParameterExpression parameterExpression,
             IEnumerable<MemberAssignment> bindings)
         {
+            var dest = Parameter(typeof(T), "dest");
+
+            if (typeof(T).IsEnum)
+            {
+                var toString = typeof(ValueType)
+                    .GetMethod(nameof(ValueType.ToString));
+                var enumString = Parameter(typeof(string), "enumString");
+
+                return Lambda<Func<T, T>>(
+                    Constant(parameterExpression, typeof(int)),
+                    parameterExpression);
+            }
+
             var propertyTypes = typeof(T)
                 .GetProperties()
                 .Where(p => p.CanWrite)
@@ -108,7 +121,6 @@ namespace LambdaMapper.Internal
                 var ctorExpressions = bindings
                     .Where(b => parameterNames.Contains(b.Member.Name))
                     .Select(b => b.Expression);
-                var dest = Parameter(typeof(T), "dest");
                 return Lambda<Func<T, T>>(
                     Block(
                         new [] { dest },
@@ -169,6 +181,16 @@ namespace LambdaMapper.Internal
                 if (!_typeClonerExpressions.ContainsKey(sourceProperty.PropertyType))
                 {
                     AddTypeCloner(sourceProperty.PropertyType);
+                }
+
+                if (sourceProperty.PropertyType.IsEnum)
+                {
+                    return MapperExpressionBuilder.ExpressionBind(
+                        Property(parameterExpression, sourceProperty),
+                        sourceProperty,
+                        destinationProperty,
+                        destinationType,
+                        Property(parameterExpression, sourceProperty));
                 }
 
                 if (sourceProperty.PropertyType.IsValueType)

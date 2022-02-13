@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using AutoMapper;
+using AutoMapper.Extensions.EnumMapping;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Diagnostics.Windows.Configs;
 using Microsoft.AspNetCore.JsonPatch;
@@ -26,6 +27,9 @@ namespace LambdaMapper.Benchmarks
                 cfg.CreateMap<SourceRole, DestinationRole>();
                 cfg.CreateMap<(SourceAddress, SourceAddress), (DestinationAddress, DestinationAddress)>();
                 cfg.CreateMap<SourceClass, DestinationClass>();
+                cfg.CreateMap<SourceEnum, DestinationEnum>()
+                    .ConvertUsingEnumMapping(opt =>
+                        opt.MapByName());
             });
             _mapper = config.CreateMapper();
 
@@ -35,6 +39,7 @@ namespace LambdaMapper.Benchmarks
             LambdaMapper.CreateMap<SourceAddress, DestinationAddress>();
             LambdaMapper.CreateMap<SourceRole, DestinationRole>();
             LambdaMapper.CreateMap<SourceClass, DestinationClass>();
+            LambdaMapper.CreateEnumMap<SourceEnum, DestinationEnum>();
             LambdaMapper.InstantiateMapper();
         }
 
@@ -236,6 +241,7 @@ namespace LambdaMapper.Benchmarks
             public (SourceAddress address1, SourceAddress address2) TupleAddresses { get; set; }
             // public SourceName FullName { get; init; }
             public JsonPatchDocument<SourceAddress> AddressChange { get; set; }
+            public SourceEnum EnumValue { get; set; }
         }
 
         public class DestinationClass
@@ -257,6 +263,22 @@ namespace LambdaMapper.Benchmarks
             // public SourceName FullName { get; init; }
             // public DestinationName FullName { get; init; }
             public JsonPatchDocument<DestinationAddress> AddressChange { get; set; }
+            public DestinationEnum EnumValue { get; set; }
+        }
+
+        public enum SourceEnum
+        {
+            First,
+            Second,
+            Third
+        }
+
+        public enum DestinationEnum
+        {
+            Fourth,
+            Third,
+            Second,
+            First
         }
 
         // public record SourceName(string FirstName, string LastName) {};

@@ -47,6 +47,38 @@ namespace LambdaMapper
                 MapperExpressionBuilder.CreateMapper<TSource, TDestination>());
         }
 
+        /// <summary>
+        /// Creates a map between the source enum and the destination enum
+        /// </summary>
+        /// <typeparam name="TSource"></typeparam>
+        /// <typeparam name="TDestination"></typeparam>
+        /// <returns></returns>
+        public static void CreateEnumMap<TSource, TDestination>()
+            where TSource : struct, IConvertible
+            where TDestination : struct, IConvertible
+        {
+            _typeMapperExpressions.Add(
+                (typeof(TSource),
+                Expression.Lambda<Action>(
+                    Expression.Call(
+                        typeof(LambdaMapper),
+                        "CreateEnumMapper",
+                        new [] 
+                        {
+                            typeof(TSource),
+                            typeof(TDestination)
+                        }))));
+        }
+
+        public static void CreateEnumMapper<TSource, TDestination>()
+            where TSource : struct, IConvertible
+            where TDestination : struct, IConvertible
+        {
+            _typeMappers.TryAdd(
+                typeof(TSource),
+                MapperExpressionBuilder.CreateEnumMapper<TSource, TDestination>());
+        }
+
         public static void InstantiateMapper()
         {
             _typeMappers.Clear();

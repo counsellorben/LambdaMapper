@@ -32,7 +32,7 @@ namespace LambdaMapper.Internal
             {
                 var map = maps.SingleOrDefault(m => m.sourceIndex == i);
 
-                if (map!.mapper == null)
+                if (map.mapper == null)
                     continue;
 
                 var mapper = map.mapper;
@@ -58,7 +58,7 @@ namespace LambdaMapper.Internal
                                 mapper,
                                 sourceItemParameter),
                             Constant(null, destinationTypeArguments[i]))),
-                    Assign(counter, Add(counter, Constant(1)))
+                    AddAssign(counter, Constant(1))
                 });
             }
 

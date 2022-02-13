@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using AutoMapper;
+using AutoMapper.Extensions.EnumMapping;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Newtonsoft.Json.Serialization;
@@ -18,6 +20,7 @@ namespace LambdaMapper.Tests
             LambdaMapper.CreateMap<SourceClass, DestinationClass>();
             LambdaMapper.CreateMap<SourceAddress, DestinationAddress>();
             LambdaMapper.CreateMap<SourceRole, DestinationRole>();
+            LambdaMapper.CreateEnumMap<SourceEnum, DestinationEnum>();
             LambdaMapper.InstantiateMapper();
             var sourceClassWithNull = GetSourceClassWithNull();
             var destinationClassWithNull = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClassWithNull);
@@ -26,6 +29,9 @@ namespace LambdaMapper.Tests
             Assert.IsNull(sourceClassWithNull.PrimaryAddress);
             Assert.IsNull(destinationClassWithNull.PrimaryAddress);
             Assert.AreEqual(sourceClassWithNull.LastName, destinationClassWithNull.LastName);
+            Assert.AreEqual(
+                sourceClassWithNull.EnumValue.ToString(),
+                destinationClassWithNull.EnumValue.ToString());
 
             var sourceClass = GetSourceClass();
             var destinationClass = LambdaMapper.MapObject<SourceClass, DestinationClass>(sourceClass);
@@ -41,6 +47,56 @@ namespace LambdaMapper.Tests
             Assert.AreEqual(
                 sourceClass.AddressChange.Operations.First().value,
                 destinationClass.AddressChange.Operations.First().value);
+            Assert.AreEqual(
+                sourceClassWithNull.EnumValue.ToString(),
+                destinationClassWithNull.EnumValue.ToString());
+        }
+
+        [Test]
+        public void AutoMapperWithAndWithoutNull()
+        {
+            var config = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<Operation<SourceAddress>, Operation<DestinationAddress>>();
+                cfg.CreateMap<JsonPatchDocument<SourceAddress>, JsonPatchDocument<DestinationAddress>>();
+                cfg.CreateMap<SourceAddress, DestinationAddress>();
+                cfg.CreateMap<SourceRole, DestinationRole>();
+                cfg.CreateMap<(SourceAddress, SourceAddress, bool), (DestinationAddress, DestinationAddress)>();
+                cfg.CreateMap<SourceClass, DestinationClass>();
+                cfg.CreateMap<SourceEnum, DestinationEnum>()
+                    .ConvertUsingEnumMapping(opt =>
+                        opt.MapByName());
+            });
+            var mapper = config.CreateMapper();
+
+            var sourceClassWithNull = GetSourceClassWithNull();
+            var destinationClassWithNull = mapper.Map<SourceClass, DestinationClass>(sourceClassWithNull);
+            Assert.AreEqual(sourceClassWithNull.Id, destinationClassWithNull.Id);
+            Assert.AreEqual(sourceClassWithNull.FirstName, destinationClassWithNull.FirstName);
+            Assert.IsNull(sourceClassWithNull.PrimaryAddress);
+            Assert.IsNull(destinationClassWithNull.PrimaryAddress);
+            Assert.AreEqual(sourceClassWithNull.LastName, destinationClassWithNull.LastName);
+            Assert.AreEqual(
+                sourceClassWithNull.EnumValue.ToString(),
+                destinationClassWithNull.EnumValue.ToString());
+
+            var sourceClass = GetSourceClass();
+            var destinationClass = mapper.Map<SourceClass, DestinationClass>(sourceClass);
+            Assert.AreEqual(sourceClass.Id, destinationClass.Id);
+            Assert.AreEqual(sourceClass.FirstName, destinationClass.FirstName);
+            Assert.AreEqual(sourceClass.PrimaryAddress.AddressLine, destinationClass.PrimaryAddress.AddressLine);
+            Assert.AreEqual(sourceClass.LastName, destinationClass.LastName);
+            Assert.AreEqual(sourceClass.Addresses.First().AddressLine, destinationClass.Addresses.First().AddressLine);
+            Assert.AreEqual(sourceClass.Roles.First().Value.RoleName, destinationClass.Roles.First().Value.RoleName);
+            Assert.AreEqual(
+                sourceClass.TupleAddresses.address1.AddressLine,
+                destinationClass.TupleAddresses.address1.AddressLine);
+            Assert.AreEqual(
+                sourceClass.AddressChange.Operations.First().value,
+                destinationClass.AddressChange.Operations.First().value);
+            Assert.AreEqual(
+                sourceClassWithNull.EnumValue.ToString(),
+                destinationClassWithNull.EnumValue.ToString());
         }
 
         private SourceClass GetSourceClass() =>
@@ -98,7 +154,8 @@ namespace LambdaMapper.Tests
                             value = "a new address"
                         }
                     },
-                    new DefaultContractResolver())
+                    new DefaultContractResolver()),
+                EnumValue = SourceEnum.Second
             };
 
         private SourceClass GetSourceClassWithNull() =>
@@ -107,6 +164,7 @@ namespace LambdaMapper.Tests
                 FirstName = "Buckaroo",
                 LastName = "Banzai",
                 Created = DateTime.UtcNow,
+                // SourceEnum = SourceEnum.Second
             };
 
         public class SourceClass
@@ -122,6 +180,7 @@ namespace LambdaMapper.Tests
             public (SourceAddress address1, SourceAddress address2, bool moreAddresses) TupleAddresses { get; set; }
             // public SourceName FullName { get; init; }
             public JsonPatchDocument<SourceAddress> AddressChange { get; set; }
+            public SourceEnum EnumValue { get; set; }
         }
 
         public class DestinationClass
@@ -144,6 +203,22 @@ namespace LambdaMapper.Tests
             // public DestinationName FullName { get; init; }
 
             public JsonPatchDocument<DestinationAddress> AddressChange { get; set; }
+            public DestinationEnum EnumValue { get; set; }
+        }
+
+        public enum SourceEnum
+        {
+            First,
+            Second,
+            Third
+        }
+
+        public enum DestinationEnum
+        {
+            Fourth,
+            Third,
+            Second,
+            First
         }
 
         // public record SourceName(string FirstName, string LastName)
